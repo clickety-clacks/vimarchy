@@ -19,7 +19,7 @@ local hint_keys = "asdfghjklqwertyuiopzxcvbnm"
 
 local function vimarchy_escape_bindings()
   hl.bind("ESCAPE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
-  hl.bind("ALT + SPACE", hl.dsp.exec_cmd(vimarchy .. "/cancel"), { release = true })
+  hl.bind("ALT + SPACE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
   hl.bind("SUPER + ESCAPE", hl.dsp.submap("reset"))
 end
 
@@ -50,7 +50,7 @@ for first = 1, #hint_keys do
   end)
 end
 
-o.bind("ALT + SPACE", "Vimarchy window hints", vimarchy .. "/open", { release = true })
+o.bind("ALT + SPACE", "Vimarchy window hints", vimarchy .. "/open")
 ```
 
 Hyprland reloads the binding automatically. Validate it with:

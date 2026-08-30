@@ -20,6 +20,9 @@ jq -s '
   | .[1] as $clients
   | {
       monitors: $monitors,
+      liveWindowIds: ($clients
+        | map(select(.mapped == true and (.stableId // "") != ""))
+        | map(.stableId)),
       windows: (
         $clients
         | map(select(.mapped == true and .hidden == false))

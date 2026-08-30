@@ -16,13 +16,10 @@ old_assignments=$assignments_file
 
 jq -n \
   --slurpfile snapshot "$snapshot_file" \
-  --slurpfile clients <(hyprctl -j clients) \
   --slurpfile old "$old_assignments" '
   "asdfghjklqwertyuiopzxcvbnm" | split("") as $keys
   | ($snapshot[0].windows | map(.stableId)) as $visible
-  | ($clients[0]
-      | map(select(.mapped == true and (.stableId // "") != ""))
-      | map(.stableId)) as $all_clients
+  | ($snapshot[0].liveWindowIds // []) as $all_clients
   | (reduce ($visible + $all_clients)[] as $id
       ([]; if index($id) == null then . + [$id] else . end)) as $live
   | (if ($live | length) <= ($keys | length)
