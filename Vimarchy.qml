@@ -196,7 +196,7 @@ Item {
             anchors.centerIn: parent
             width: windowHint.badgeSize
             height: windowHint.badgeSize
-            radius: Math.min(Style.cornerRadius, width / 5)
+            radius: width / 2
             color: Qt.rgba(windowHint.accentColor.r, windowHint.accentColor.g,
               windowHint.accentColor.b, root.badgeTintOpacity)
 
