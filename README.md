@@ -4,7 +4,7 @@
   <img src="assets/vimarchy-hero.webp" alt="Vimarchy window hints and swap mode in action" width="960">
 </p>
 
-Vimium-style window hints for Omarchy, inspired by tmux `display-panes`.
+Vimium-style window hints for Omarchy.
 
 Press a shortcut, see a large hint over every visible window, then tap a hint
 to focus it. Hold a hint to choose a swap source, then tap another hint to
