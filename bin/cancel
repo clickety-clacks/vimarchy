@@ -8,4 +8,6 @@ state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
 # shell teardown cannot consume keyboard events after this point.
 hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
 omarchy-shell shell hide vimarchy >/dev/null 2>&1 || true
-rm -f "$state_dir/snapshot.json" "$state_dir/snapshot.json.tmp"
+rm -f "$state_dir/snapshot.json" "$state_dir/snapshot.json.tmp" \
+  "$state_dir/swap-source.json" "$state_dir/swap-source.json.tmp" \
+  "$state_dir/press.json" "$state_dir/press.json.tmp"

@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+hint=${1:-}
+[[ $hint =~ ^[a-z]{1,2}$ ]] || exit 2
+
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+state_file=$state_dir/snapshot.json
+source_file=$state_dir/swap-source.json
+
+# Return the compositor to normal ownership before doing any fallible work.
+hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+
+source_stable=""
+target_stable=""
+if [[ -f $source_file ]]; then
+  source_stable=$(jq -r '.stableId // ""' "$source_file")
+fi
+if [[ -f $state_file ]]; then
+  target_stable=$(jq -r --arg hint "$hint" \
+    '.windows[] | select(.hint == $hint) | .stableId' "$state_file" | head -n 1)
+fi
+
+omarchy-shell shell hide vimarchy >/dev/null 2>&1 || true
+for _ in {1..100}; do
+  if ! hyprctl layers -j | jq -e '.. | objects | select(.namespace? == "vimarchy")' >/dev/null; then
+    break
+  fi
+  sleep 0.01
+done
+
+rm -f "$state_file" "$state_dir/snapshot.json.tmp" "$source_file" \
+  "$state_dir/swap-source.json.tmp" "$state_dir/press.json" "$state_dir/press.json.tmp"
+[[ $source_stable =~ ^[0-9a-fA-F]+$ ]] || exit 0
+[[ $target_stable =~ ^[0-9a-fA-F]+$ ]] || exit 0
+[[ $source_stable != "$target_stable" ]] || exit 0
+
+clients=$(hyprctl -j clients)
+source_address=$(jq -r --arg stable "$source_stable" \
+  '.[] | select(.stableId == $stable) | .address' <<<"$clients" | head -n 1)
+target_address=$(jq -r --arg stable "$target_stable" \
+  '.[] | select(.stableId == $stable) | .address' <<<"$clients" | head -n 1)
+[[ $source_address =~ ^0x[0-9a-fA-F]+$ ]] || exit 0
+[[ $target_address =~ ^0x[0-9a-fA-F]+$ ]] || exit 0
+
+hyprctl eval "hl.dispatch(hl.dsp.window.swap({ window = \"address:$source_address\", target = \"address:$target_address\" }))" >/dev/null

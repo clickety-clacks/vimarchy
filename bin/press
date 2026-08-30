@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+hint=${1:-}
+[[ $hint =~ ^[a-z]{1,2}$ ]] || exit 2
+
+plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+press_file=$state_dir/press.json
+press_tmp=$state_dir/press.json.tmp
+nonce="$$-$(date +%s%N)"
+
+jq -cn --arg hint "$hint" --arg nonce "$nonce" '{hint:$hint, nonce:$nonce}' >"$press_tmp"
+mv -f "$press_tmp" "$press_file"
+setsid -f "$plugin_dir/bin/hold-after-delay" "$hint" "$nonce"

@@ -1,9 +1,14 @@
 # Vimarchy
 
+<p align="center">
+  <img src="assets/vimarchy-hero.webp" alt="Vimarchy window hints and swap mode in action" width="960">
+</p>
+
 Vimium-style window hints for Omarchy, inspired by tmux `display-panes`.
 
-Press a shortcut, see a large hint over every visible window, then type a hint
-to focus that window. Vimarchy does not rearrange, resize, or preview windows.
+Press a shortcut, see a large hint over every visible window, then tap a hint
+to focus it. Hold a hint to choose a swap source, then tap another hint to
+exchange those two windows directly through Hyprland.
 
 ## Install
 
@@ -27,7 +32,8 @@ end
 hl.define_submap("vimarchy", function()
   for slot = 1, #hint_keys do
     local letter = hint_keys:sub(slot, slot)
-    hl.bind(letter, hl.dsp.exec_cmd(vimarchy .. "/select " .. letter))
+    hl.bind(letter, hl.dsp.exec_cmd(vimarchy .. "/press " .. letter))
+    hl.bind(letter, hl.dsp.exec_cmd(vimarchy .. "/release " .. letter), { release = true })
   end
   vimarchy_escape_bindings()
 end)
@@ -45,7 +51,36 @@ for first = 1, #hint_keys do
   hl.define_submap("vimarchy-" .. first_letter, function()
     for second = 1, #hint_keys do
       local second_letter = hint_keys:sub(second, second)
-      hl.bind(second_letter, hl.dsp.exec_cmd(vimarchy .. "/select " .. first_letter .. second_letter))
+      local hint = first_letter .. second_letter
+      hl.bind(second_letter, hl.dsp.exec_cmd(vimarchy .. "/press " .. hint))
+      hl.bind(second_letter, hl.dsp.exec_cmd(vimarchy .. "/release " .. hint), { release = true })
+    end
+    vimarchy_escape_bindings()
+  end)
+end
+
+hl.define_submap("vimarchy-swap", function()
+  for slot = 1, #hint_keys do
+    local letter = hint_keys:sub(slot, slot)
+    hl.bind(letter, hl.dsp.exec_cmd(vimarchy .. "/swap " .. letter))
+  end
+  vimarchy_escape_bindings()
+end)
+
+hl.define_submap("vimarchy-swap-double", function()
+  for first = 1, #hint_keys do
+    local letter = hint_keys:sub(first, first)
+    hl.bind(letter, hl.dsp.submap("vimarchy-swap-" .. letter))
+  end
+  vimarchy_escape_bindings()
+end)
+
+for first = 1, #hint_keys do
+  local first_letter = hint_keys:sub(first, first)
+  hl.define_submap("vimarchy-swap-" .. first_letter, function()
+    for second = 1, #hint_keys do
+      local second_letter = hint_keys:sub(second, second)
+      hl.bind(second_letter, hl.dsp.exec_cmd(vimarchy .. "/swap " .. first_letter .. second_letter))
     end
     vimarchy_escape_bindings()
   end)
@@ -80,15 +115,21 @@ hyprctl configerrors
 - Remembers assignments by Hyprland stable window ID, including windows on
   other workspaces. A letter is reused only after its window closes.
 - Supports multiple outputs and fractional scaling.
+- Holding the final key of a hint for 350 ms enters swap mode. The source
+  window tint becomes 50% opaque and lines connect
+  its hint to every available destination; tapping a destination swaps them.
+- Swap mode resolves both stable IDs again immediately before the operation,
+  so a closed or replaced client cannot redirect the action.
 - Press Escape to cancel.
 
 ## Keyboard safety
 
 Vimarchy's layer surface is input-passive: it never grabs the Wayland
-keyboard. Static Hyprland submaps temporarily route only hint letters, Escape,
-and the Vimarchy toggle while the hints are visible. Normal bindings are never
-removed or rewritten. `Super+Escape` always resets the submap before asking
-the overlay to close, even if the plugin is broken or missing.
+keyboard. Static Hyprland submaps distinguish release taps from long presses,
+then route swap destinations, Escape, and the Vimarchy toggle while hints are
+visible. Normal bindings are never removed or rewritten. `Super+Escape` always
+resets the submap before asking the overlay to close, even if the plugin is
+broken or missing.
 
 ## Requirements
 

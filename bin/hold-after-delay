@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+hint=${1:-}
+nonce=${2:-}
+[[ $hint =~ ^[a-z]{1,2}$ && -n $nonce ]] || exit 2
+
+plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+press_file=$state_dir/press.json
+
+sleep 0.35
+[[ -f $press_file ]] || exit 0
+jq -e --arg hint "$hint" --arg nonce "$nonce" \
+  '.hint == $hint and .nonce == $nonce' "$press_file" >/dev/null || exit 0
+
+"$plugin_dir/bin/hold" "$hint"
+rm -f "$press_file" "$state_dir/press.json.tmp"

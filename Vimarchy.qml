@@ -12,6 +12,11 @@ Item {
   property bool settingsOpen: false
   property var windows: []
   property var monitors: []
+  property string swapSourceHint: ""
+  property string selectedHint: ""
+  property real exitOpacity: 1.0
+  readonly property bool exiting: selectedHint !== ""
+  readonly property bool swapMode: swapSourceHint !== ""
   property int loadGeneration: 0
   property string hintKeys: "asdfghjklqwertyuiopzxcvbnm"
   readonly property var hintPalette: [
@@ -24,6 +29,7 @@ Item {
   readonly property string settingsPath: Quickshell.env("HOME") + "/.config/omarchy/vimarchy.json"
   property real windowTintOpacity: 0.07
   property real badgeTintOpacity: 0.21
+  readonly property real connectorOpacity: 0.60
   property bool settingsLoaded: false
 
   function setOpacity(name, value) {
@@ -62,6 +68,10 @@ Item {
   function open(payloadJson) {
     try {
       var payload = JSON.parse(String(payloadJson || "{}"))
+      if (payload.mode === "selected") {
+        root.beginSelection(String(payload.hint || ""))
+        return
+      }
       if (payload.mode === "settings") {
         root.settingsOpen = true
         return
@@ -69,6 +79,11 @@ Item {
     } catch (error) { /* A malformed snapshot is handled below. */ }
     if (snapshotProcess.running) return
     root.settingsOpen = false
+    root.swapSourceHint = ""
+    root.selectedHint = ""
+    root.exitOpacity = 1.0
+    selectionFade.stop()
+    selectionCloseTimer.stop()
     root.opened = false
     root.loadGeneration++
     if (payloadJson && payloadJson !== "{}") {
@@ -81,11 +96,29 @@ Item {
   }
 
   function close() {
+    selectionFade.stop()
+    selectionCloseTimer.stop()
     root.loadGeneration++
     root.opened = false
     root.settingsOpen = false
     root.windows = []
     root.monitors = []
+    root.swapSourceHint = ""
+    root.selectedHint = ""
+    root.exitOpacity = 1.0
+  }
+
+  function beginSelection(hint) {
+    if (!root.opened || !root.windowForHint(hint)) {
+      root.close()
+      return
+    }
+    root.settingsOpen = false
+    root.swapSourceHint = ""
+    root.selectedHint = hint
+    root.exitOpacity = 1.0
+    selectionFade.restart()
+    selectionCloseTimer.restart()
   }
 
   function toggle(payloadJson) {
@@ -120,6 +153,18 @@ Item {
     for (var i = 0; i < root.windows.length; i++)
       if (root.windows[i].monitor === name) result.push(root.windows[i])
     return result
+  }
+
+  function windowForHint(hint) {
+    for (var i = 0; i < root.windows.length; i++)
+      if (root.windows[i].hint === hint) return root.windows[i]
+    return null
+  }
+
+  function enterSwap(hint) {
+    if (!root.windowForHint(String(hint || ""))) return "unknown"
+    root.swapSourceHint = String(hint)
+    return "ok"
   }
 
   Process {
@@ -166,6 +211,25 @@ Item {
     onTriggered: root.saveSettings()
   }
 
+  SequentialAnimation {
+    id: selectionFade
+    NumberAnimation {
+      target: root
+      property: "exitOpacity"
+      from: 1.0
+      to: 0.0
+      duration: 500
+      easing.type: Easing.Linear
+    }
+  }
+
+  Timer {
+    id: selectionCloseTimer
+    interval: 520
+    repeat: false
+    onTriggered: root.close()
+  }
+
   Variants {
     model: Quickshell.screens
 
@@ -185,6 +249,49 @@ Item {
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
+      readonly property var swapSource: root.windowForHint(root.swapSourceHint)
+
+      Repeater {
+        model: root.swapMode && overlay.swapSource
+          ? root.windows.filter(function(window) { return window.hint !== root.swapSourceHint })
+          : []
+
+        delegate: Rectangle {
+          required property var modelData
+          readonly property real sourceX: overlay.swapSource.at[0] + overlay.swapSource.size[0] / 2 - overlay.monitor.x
+          readonly property real sourceY: overlay.swapSource.at[1] + overlay.swapSource.size[1] / 2 - overlay.monitor.y
+          readonly property real targetX: modelData.at[0] + modelData.size[0] / 2 - overlay.monitor.x
+          readonly property real targetY: modelData.at[1] + modelData.size[1] / 2 - overlay.monitor.y
+          readonly property real deltaX: targetX - sourceX
+          readonly property real deltaY: targetY - sourceY
+          readonly property real distance: Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+          readonly property real sourceRadius: Math.max(72, Math.min(132,
+            Math.min(overlay.swapSource.size[0], overlay.swapSource.size[1]) * 0.34)) / 2
+            + Style.space(6)
+          readonly property real targetRadius: Math.max(72, Math.min(132,
+            Math.min(modelData.size[0], modelData.size[1]) * 0.34)) / 2
+            + Style.space(6)
+          readonly property real unitX: distance > 0 ? deltaX / distance : 0
+          readonly property real unitY: distance > 0 ? deltaY / distance : 0
+          readonly property real startX: sourceX + unitX * sourceRadius
+          readonly property real startY: sourceY + unitY * sourceRadius
+          readonly property real endX: targetX - unitX * targetRadius
+          readonly property real endY: targetY - unitY * targetRadius
+
+          x: (startX + endX) / 2 - width / 2
+          y: (startY + endY) / 2 - height / 2
+          width: Math.max(0, distance - sourceRadius - targetRadius)
+          height: Math.max(2, Style.space(2))
+          radius: height / 2
+          rotation: Math.atan2(deltaY, deltaX) * 180 / Math.PI
+          transformOrigin: Item.Center
+          color: root.colorForHint(root.swapSourceHint)
+          opacity: root.connectorOpacity * root.exitOpacity
+          antialiasing: true
+          z: 1
+        }
+      }
+
       Repeater {
         model: root.windowsFor(overlay.modelData.name)
 
@@ -199,14 +306,39 @@ Item {
           y: modelData.at[1] - overlay.monitor.y
           width: modelData.size[0]
           height: modelData.size[1]
+          z: 2
 
           Rectangle {
             anchors.fill: parent
+            opacity: root.exiting
+              ? (windowHint.modelData.hint === root.selectedHint ? root.exitOpacity : 0)
+              : 1
             color: Qt.rgba(windowHint.accentColor.r, windowHint.accentColor.g,
-              windowHint.accentColor.b, root.windowTintOpacity)
+              windowHint.accentColor.b,
+              windowHint.modelData.hint === root.swapSourceHint || windowHint.modelData.hint === root.selectedHint
+                ? 0.50 : root.windowTintOpacity)
+            radius: Style.cornerRadius
+          }
+
+          Rectangle {
+            anchors.fill: parent
+            color: "transparent"
             border.width: Math.max(2, Style.space(2))
             border.color: windowHint.accentColor
             radius: Style.cornerRadius
+            opacity: root.exiting ? 0 : 1
+          }
+
+          Rectangle {
+            anchors.centerIn: parent
+            width: windowHint.badgeSize + Style.space(12)
+            height: width
+            radius: width / 2
+            color: "transparent"
+            border.width: Math.max(2, Style.space(2))
+            border.color: root.colorForHint(root.swapSourceHint)
+            opacity: root.connectorOpacity
+            visible: root.swapMode
           }
 
           Rectangle {
@@ -215,8 +347,10 @@ Item {
             width: windowHint.badgeSize
             height: windowHint.badgeSize
             radius: width / 2
+            opacity: root.exiting ? 0 : 1
             color: Qt.rgba(windowHint.accentColor.r, windowHint.accentColor.g,
-              windowHint.accentColor.b, root.badgeTintOpacity)
+              windowHint.accentColor.b,
+              windowHint.modelData.hint === root.selectedHint ? 0.50 : root.badgeTintOpacity)
 
             Text {
               anchors.centerIn: parent
@@ -225,6 +359,7 @@ Item {
               font.family: Style.font.menuFamily
               font.pixelSize: Math.round(badge.height * (text.length > 1 ? 0.46 : 0.62))
               font.bold: true
+              opacity: root.exiting ? 0 : 1
             }
           }
         }

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+hint=${1:-}
+[[ $hint =~ ^[a-z]{1,2}$ ]] || exit 2
+
+plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+state_file=$state_dir/snapshot.json
+source_file=$state_dir/swap-source.json
+source_tmp=$state_dir/swap-source.json.tmp
+
+[[ -f $state_file ]] || exit 0
+[[ ! -f $source_file ]] || exit 0
+
+source_json=$(jq -c --arg hint "$hint" \
+  '.windows[] | select(.hint == $hint) | {hint, stableId}' "$state_file" | head -n 1)
+[[ -n $source_json ]] || exit 0
+
+printf '%s\n' "$source_json" >"$source_tmp"
+mv -f "$source_tmp" "$source_file"
+
+if ! omarchy-shell shell call vimarchy enterSwap "$hint" >/dev/null; then
+  rm -f "$source_file"
+  exit 1
+fi
+
+hint_length=$(jq -r '(.windows[0].hint // "") | length' "$state_file")
+swap_submap=vimarchy-swap
+(( hint_length == 2 )) && swap_submap=vimarchy-swap-double
+hyprctl dispatch "hl.dsp.submap(\"$swap_submap\")" >/dev/null

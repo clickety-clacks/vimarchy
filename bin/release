@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+hint=${1:-}
+[[ $hint =~ ^[a-z]{1,2}$ ]] || exit 2
+
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+press_file=$state_dir/press.json
+
+# A long press has already promoted this key to the swap source. Its eventual
+# key-up must not also perform the normal tap action.
+if [[ -f $state_dir/swap-source.json ]]; then
+  rm -f "$press_file" "$state_dir/press.json.tmp"
+  exit 0
+fi
+
+pending_hint=$(jq -r '.hint // ""' "$press_file" 2>/dev/null || true)
+[[ $pending_hint == "$hint" ]] || exit 0
+rm -f "$press_file" "$state_dir/press.json.tmp"
+
+exec "$(dirname -- "${BASH_SOURCE[0]}")/select" "$hint"
