@@ -15,20 +15,42 @@ Add the static modal map and launcher to `~/.config/hypr/bindings.lua`:
 
 ```lua
 local vimarchy = os.getenv("HOME") .. "/.config/omarchy/plugins/vimarchy/bin"
+local hint_keys = "asdfghjklqwertyuiopzxcvbnm"
+
+local function vimarchy_escape_bindings()
+  hl.bind("ESCAPE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
+  hl.bind("ALT + SPACE", hl.dsp.exec_cmd(vimarchy .. "/cancel"), { release = true })
+  hl.bind("SUPER + ESCAPE", hl.dsp.submap("reset"))
+end
 
 hl.define_submap("vimarchy", function()
-  for slot = 1, 9 do
-    hl.bind(tostring(slot), hl.dsp.exec_cmd(vimarchy .. "/select " .. slot))
+  for slot = 1, #hint_keys do
+    hl.bind(hint_keys:sub(slot, slot), hl.dsp.exec_cmd(vimarchy .. "/select " .. slot))
   end
-  hl.bind("ESCAPE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
-  hl.bind("SUPER + Q", hl.dsp.exec_cmd(vimarchy .. "/cancel"), { release = true })
-  hl.bind("SUPER + ESCAPE", function()
-    hl.dispatch(hl.dsp.submap("reset"))
-    hl.dispatch(hl.dsp.exec_cmd(vimarchy .. "/cancel"))
-  end)
+  vimarchy_escape_bindings()
 end)
 
-o.bind("SUPER + Q", "Vimarchy window hints", vimarchy .. "/open", { release = true })
+hl.define_submap("vimarchy-double", function()
+  for first = 1, #hint_keys do
+    local letter = hint_keys:sub(first, first)
+    hl.bind(letter, hl.dsp.submap("vimarchy-" .. letter))
+  end
+  vimarchy_escape_bindings()
+end)
+
+for first = 1, #hint_keys do
+  local first_letter = hint_keys:sub(first, first)
+  hl.define_submap("vimarchy-" .. first_letter, function()
+    for second = 1, #hint_keys do
+      local second_letter = hint_keys:sub(second, second)
+      local slot = (first - 1) * #hint_keys + second
+      hl.bind(second_letter, hl.dsp.exec_cmd(vimarchy .. "/select " .. slot))
+    end
+    vimarchy_escape_bindings()
+  end)
+end
+
+o.bind("ALT + SPACE", "Vimarchy window hints", vimarchy .. "/open", { release = true })
 ```
 
 Hyprland reloads the binding automatically. Validate it with:
@@ -42,14 +64,16 @@ hyprctl configerrors
 
 - Shows only mapped windows on the workspaces currently visible across outputs.
 - Includes visible special-workspace and pinned windows.
-- Uses `1`–`9` for direct selection.
+- Prioritizes home-row letters: `a s d f g h j k l`, then the remaining letters.
+- Uses one-letter hints for up to 26 windows. Above that, all hints become
+  unambiguous two-letter sequences such as `aa`, `as`, and `ad`.
 - Supports multiple outputs and fractional scaling.
 - Press Escape to cancel.
 
 ## Keyboard safety
 
 Vimarchy's layer surface is input-passive: it never grabs the Wayland
-keyboard. A static Hyprland submap temporarily routes only `1`–`9`, Escape,
+keyboard. Static Hyprland submaps temporarily route only hint letters, Escape,
 and the Vimarchy toggle while the hints are visible. Normal bindings are never
 removed or rewritten. `Super+Escape` always resets the submap before asking
 the overlay to close, even if the plugin is broken or missing.

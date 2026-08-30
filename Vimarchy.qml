@@ -11,7 +11,7 @@ Item {
   property var windows: []
   property var monitors: []
   property int loadGeneration: 0
-  property string hintKeys: "123456789"
+  property string hintKeys: "asdfghjklqwertyuiopzxcvbnm"
   readonly property string snapshotPath: Qt.resolvedUrl("bin/current").toString().replace("file://", "")
 
   function open(payloadJson) {
@@ -40,10 +40,18 @@ Item {
     try {
       var data = JSON.parse(String(raw || "{}"))
       var nextWindows = data.windows || []
-      var available = root.hintKeys.length
+      var alphabetSize = root.hintKeys.length
+      var usePairs = nextWindows.length > alphabetSize
+      var available = usePairs ? alphabetSize * alphabetSize : alphabetSize
 
-      for (var i = 0; i < nextWindows.length && i < available; i++)
-        nextWindows[i].hint = root.hintKeys.charAt(i)
+      for (var i = 0; i < nextWindows.length && i < available; i++) {
+        if (usePairs) {
+          nextWindows[i].hint = root.hintKeys.charAt(Math.floor(i / alphabetSize))
+            + root.hintKeys.charAt(i % alphabetSize)
+        } else {
+          nextWindows[i].hint = root.hintKeys.charAt(i)
+        }
+      }
 
       root.monitors = data.monitors || []
       root.windows = nextWindows.slice(0, available)
@@ -129,7 +137,7 @@ Item {
             text: badge.modelData.hint.toUpperCase()
             color: badge.modelData.focused ? Color.menu.selectedText : Color.menu.text
             font.family: Style.font.menuFamily
-            font.pixelSize: Math.round(badge.height * 0.62)
+            font.pixelSize: Math.round(badge.height * (text.length > 1 ? 0.46 : 0.62))
             font.bold: true
           }
         }

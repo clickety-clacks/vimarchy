@@ -33,6 +33,9 @@ if (( window_count == 0 )); then
   exit 0
 fi
 
+selection_submap=vimarchy
+(( window_count > 26 )) && selection_submap=vimarchy-double
+
 omarchy-shell shell summon vimarchy '{}' >/dev/null
 
 # Enter the modal map only after the passive overlay is visibly mapped. If the
@@ -43,7 +46,7 @@ for _ in {1..100}; do
     # replace a submap which appeared after the initial check.
     active_submap=$(hyprctl submap 2>/dev/null | tr -d '\n')
     if [[ -z $active_submap || $active_submap == default ]]; then
-      hyprctl dispatch 'hl.dsp.submap("vimarchy")' >/dev/null
+      hyprctl dispatch "hl.dsp.submap(\"$selection_submap\")" >/dev/null
       exit 0
     fi
     break
