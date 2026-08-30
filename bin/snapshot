@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Keep all geometry in Hyprland's logical coordinate space. Quickshell's
+# per-output PanelWindows use the same logical dimensions, including on
+# fractionally scaled displays.
+jq -s '
+  .[0] as $raw_monitors
+  | ($raw_monitors | map({
+      name,
+      x,
+      y,
+      width: (.width / .scale | round),
+      height: (.height / .scale | round),
+      focused,
+      activeWorkspace,
+      specialWorkspace
+    })) as $monitors
+  | .[1] as $clients
+  | {
+      monitors: $monitors,
+      windows: (
+        $clients
+        | map(select(.mapped == true and .hidden == false))
+        | map(select(
+            .pinned == true
+            or (.workspace.id as $workspace
+                | any($monitors[];
+                    .activeWorkspace.id == $workspace
+                    or (.specialWorkspace.id != 0 and .specialWorkspace.id == $workspace)))
+          ))
+        | map(. as $client
+            | (($client.at[0] + ($client.size[0] / 2)) | floor) as $center_x
+            | (($client.at[1] + ($client.size[1] / 2)) | floor) as $center_y
+            | ($monitors
+                | map(select(
+                    $center_x >= .x and $center_x < (.x + .width)
+                    and $center_y >= .y and $center_y < (.y + .height)))
+                | .[0]) as $monitor
+            | select($monitor != null)
+            | {
+                address,
+                at,
+                size,
+                class,
+                title,
+                monitor: $monitor.name,
+                focused: (.focusHistoryID == 0)
+              })
+        | sort_by(.monitor, .at[1], .at[0])
+      )
+    }
+' <(hyprctl -j monitors) <(hyprctl -j clients)

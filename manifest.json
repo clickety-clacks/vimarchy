@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "vimarchy",
+  "name": "Vimarchy",
+  "version": "0.1.0",
+  "author": "Mike Manzano",
+  "license": "MIT",
+  "description": "Vimium-style window hints for Omarchy",
+  "kinds": [
+    "overlay"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "overlay": "Vimarchy.qml"
+  }
+}
