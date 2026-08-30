@@ -16,7 +16,7 @@ old_assignments=$assignments_file
 mapfile -t results < <(jq -cn \
   --slurpfile snapshot "$snapshot_file" \
   --slurpfile old "$old_assignments" '
-  "asdfghjklqwertyuiopzxcvbnm" | split("") as $keys
+  "asdfgjklqwertyuiopzxcvbnm" | split("") as $keys
   | ($snapshot[0].windows | map(.stableId)) as $visible
   | ($snapshot[0].liveWindowIds // []) as $all_clients
   | (reduce ($visible + $all_clients)[] as $id

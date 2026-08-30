@@ -13,7 +13,7 @@ Item {
   property var windows: []
   property var monitors: []
   property int loadGeneration: 0
-  property string hintKeys: "asdfghjklqwertyuiopzxcvbnm"
+  property string hintKeys: "asdfgjklqwertyuiopzxcvbnm"
   readonly property string snapshotPath: Qt.resolvedUrl("bin/current").toString().replace("file://", "")
   readonly property string settingsPath: Quickshell.env("HOME") + "/.config/omarchy/vimarchy.json"
   property real windowTintOpacity: 0.03
