@@ -178,8 +178,7 @@ Item {
         delegate: Item {
           id: windowHint
           required property var modelData
-          readonly property color accentColor: modelData.focused
-            ? Color.menu.selectedText : Color.menu.text
+          readonly property color accentColor: Color.accent
           readonly property int badgeSize: Math.max(72, Math.min(132,
             Math.min(modelData.size[0], modelData.size[1]) * 0.34))
 
