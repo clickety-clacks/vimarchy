@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+state_file=$state_dir/snapshot.json
+
+[[ -f $state_file ]] || exit 1
+cat "$state_file"

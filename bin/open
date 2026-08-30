@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+state_file=$state_dir/snapshot.json
+state_tmp=$state_dir/snapshot.json.tmp
+
+# Refuse to steal modal ownership from Ask or another Hyprland submap.
+active_submap=$(hyprctl submap 2>/dev/null | tr -d '\n')
+[[ -z $active_submap || $active_submap == default ]] || exit 0
+
+# A stale surface should never be paired with a fresh selection snapshot.
+if hyprctl layers -j | jq -e '.. | objects | select(.namespace? == "vimarchy")' >/dev/null; then
+  omarchy-shell shell hide vimarchy >/dev/null 2>&1 || true
+  exit 1
+fi
+
+umask 077
+mkdir -p "$state_dir"
+
+# Collapse key repeat or two near-simultaneous launches into one transaction.
+exec 9>"$state_dir/open.lock"
+flock -n 9 || exit 0
+
+"$plugin_dir/bin/snapshot" >"$state_tmp"
+mv -f "$state_tmp" "$state_file"
+
+window_count=$(jq -r '.windows | length' "$state_file")
+if (( window_count == 0 )); then
+  rm -f "$state_file"
+  exit 0
+fi
+
+omarchy-shell shell summon vimarchy '{}' >/dev/null
+
+# Enter the modal map only after the passive overlay is visibly mapped. If the
+# shell cannot show it, roll back without ever changing the user's keymap.
+for _ in {1..100}; do
+  if hyprctl layers -j | jq -e '.. | objects | select(.namespace? == "vimarchy")' >/dev/null; then
+    # Ask may have opened while the shell was mapping our overlay. Never
+    # replace a submap which appeared after the initial check.
+    active_submap=$(hyprctl submap 2>/dev/null | tr -d '\n')
+    if [[ -z $active_submap || $active_submap == default ]]; then
+      hyprctl dispatch 'hl.dsp.submap("vimarchy")' >/dev/null
+      exit 0
+    fi
+    break
+  fi
+  sleep 0.01
+done
+
+omarchy-shell shell hide vimarchy >/dev/null 2>&1 || true
+rm -f "$state_file"
+exit 1

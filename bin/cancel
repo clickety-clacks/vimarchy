@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+
+# Restore normal bindings first. The overlay is input-passive, so even a slow
+# shell teardown cannot consume keyboard events after this point.
+hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+omarchy-shell shell hide vimarchy >/dev/null 2>&1 || true
+rm -f "$state_dir/snapshot.json" "$state_dir/snapshot.json.tmp"

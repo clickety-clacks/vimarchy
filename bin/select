@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+slot=${1:-}
+[[ $slot =~ ^[1-9]$ ]] || exit 2
+
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+state_file=$state_dir/snapshot.json
+
+# Always release the modal map, even if the selected window disappeared.
+hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+
+stable_id=""
+if [[ -f $state_file ]]; then
+  stable_id=$(jq -r --argjson index "$((slot - 1))" '.windows[$index].stableId // ""' "$state_file")
+fi
+
+omarchy-shell shell hide vimarchy >/dev/null 2>&1 || true
+
+# Wait for every per-output surface to unmap before changing focus.
+for _ in {1..100}; do
+  if ! hyprctl layers -j | jq -e '.. | objects | select(.namespace? == "vimarchy")' >/dev/null; then
+    break
+  fi
+  sleep 0.01
+done
+
+rm -f "$state_file" "$state_dir/snapshot.json.tmp"
+[[ $stable_id =~ ^[0-9a-fA-F]+$ ]] || exit 0
+
+# stableId survives address changes. Re-resolve it at activation time so a
+# closed/replaced window cannot redirect selection to the wrong client.
+address=$(hyprctl -j clients | jq -r --arg stable "$stable_id" '.[] | select(.stableId == $stable) | .address' | head -n 1)
+[[ $address =~ ^0x[0-9a-fA-F]+$ ]] || exit 0
+hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null

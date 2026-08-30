@@ -8,34 +8,35 @@ Item {
   id: root
 
   property bool opened: false
-  property bool loading: false
   property var windows: []
   property var monitors: []
-  property string hintKeys: "123456789asdfghjklqwertyuiopzxcvbnm"
-  readonly property string snapshotPath: Qt.resolvedUrl("bin/snapshot").toString().replace("file://", "")
-  readonly property string focusPath: Qt.resolvedUrl("bin/focus").toString().replace("file://", "")
+  property int loadGeneration: 0
+  property string hintKeys: "123456789"
+  readonly property string snapshotPath: Qt.resolvedUrl("bin/current").toString().replace("file://", "")
 
   function open(payloadJson) {
     if (snapshotProcess.running) return
-    root.loading = true
     root.opened = false
+    root.loadGeneration++
+    snapshotProcess.generation = root.loadGeneration
     snapshotProcess.command = [root.snapshotPath]
     snapshotProcess.running = true
   }
 
   function close() {
+    root.loadGeneration++
     root.opened = false
-    root.loading = false
     root.windows = []
     root.monitors = []
   }
 
   function toggle(payloadJson) {
-    if (root.opened || root.loading) root.close()
+    if (root.opened) root.close()
     else root.open(payloadJson || "{}")
   }
 
-  function applySnapshot(raw) {
+  function applySnapshot(raw, generation) {
+    if (generation !== root.loadGeneration) return
     try {
       var data = JSON.parse(String(raw || "{}"))
       var nextWindows = data.windows || []
@@ -46,7 +47,6 @@ Item {
 
       root.monitors = data.monitors || []
       root.windows = nextWindows.slice(0, available)
-      root.loading = false
       root.opened = root.windows.length > 0
     } catch (error) {
       console.warn("vimarchy: could not parse Hyprland snapshot:", error)
@@ -67,24 +67,13 @@ Item {
     return result
   }
 
-  function activateHint(text) {
-    var hint = String(text || "").toLowerCase()
-    for (var i = 0; i < root.windows.length; i++) {
-      if (root.windows[i].hint === hint) {
-        var address = root.windows[i].address
-        Quickshell.execDetached([root.focusPath, address])
-        root.close()
-        return
-      }
-    }
-  }
-
   Process {
     id: snapshotProcess
+    property int generation: 0
     running: false
     stdout: StdioCollector {
       waitForEnd: true
-      onStreamFinished: root.applySnapshot(text)
+      onStreamFinished: root.applySnapshot(text, snapshotProcess.generation)
     }
     stderr: StdioCollector {
       waitForEnd: true
@@ -115,38 +104,7 @@ Item {
       exclusionMode: ExclusionMode.Ignore
       WlrLayershell.namespace: "vimarchy"
       WlrLayershell.layer: WlrLayer.Overlay
-      WlrLayershell.keyboardFocus: focusedMonitor
-        ? WlrKeyboardFocus.Exclusive
-        : WlrKeyboardFocus.None
-
-      onVisibleChanged: {
-        if (visible && focusedMonitor)
-          Qt.callLater(function() { keyCatcher.forceActiveFocus() })
-      }
-
-      Item {
-        id: keyCatcher
-        anchors.fill: parent
-        focus: true
-
-        Keys.priority: Keys.BeforeItem
-        Keys.onPressed: function(event) {
-          if (event.key === Qt.Key_Escape) {
-            root.close()
-            event.accepted = true
-            return
-          }
-
-          var typed = String(event.text || "").toLowerCase()
-          if (typed === "" && event.key >= Qt.Key_0 && event.key <= Qt.Key_9)
-            typed = String.fromCharCode(48 + event.key - Qt.Key_0)
-
-          if (root.hintKeys.indexOf(typed) >= 0) {
-            root.activateHint(typed)
-            event.accepted = true
-          }
-        }
-      }
+      WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
       Repeater {
         model: root.windowsFor(overlay.modelData.name)

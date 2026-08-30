@@ -41,6 +41,7 @@ jq -s '
             | select($monitor != null)
             | {
                 address,
+                stableId,
                 at,
                 size,
                 class,
@@ -49,6 +50,7 @@ jq -s '
                 focused: (.focusHistoryID == 0)
               })
         | sort_by(.monitor, .at[1], .at[0])
+        | .[0:9]
       )
     }
 ' <(hyprctl -j monitors) <(hyprctl -j clients)
