@@ -11,9 +11,9 @@ Item {
   property bool loading: false
   property var windows: []
   property var monitors: []
-  property string pendingAddress: ""
   property string hintKeys: "123456789asdfghjklqwertyuiopzxcvbnm"
   readonly property string snapshotPath: Qt.resolvedUrl("bin/snapshot").toString().replace("file://", "")
+  readonly property string focusPath: Qt.resolvedUrl("bin/focus").toString().replace("file://", "")
 
   function open(payloadJson) {
     if (snapshotProcess.running) return
@@ -72,27 +72,10 @@ Item {
     for (var i = 0; i < root.windows.length; i++) {
       if (root.windows[i].hint === hint) {
         var address = root.windows[i].address
-        root.pendingAddress = address
+        Quickshell.execDetached([root.focusPath, address])
         root.close()
-        focusTimer.restart()
         return
       }
-    }
-  }
-
-  Timer {
-    id: focusTimer
-    interval: 50
-    repeat: false
-    onTriggered: {
-      if (root.pendingAddress === "") return
-      var address = root.pendingAddress
-      root.pendingAddress = ""
-      Quickshell.execDetached([
-        "hyprctl",
-        "dispatch",
-        "hl.dsp.focus({ window = \"address:" + address + "\" })"
-      ])
     }
   }
 

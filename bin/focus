@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+address=${1:-}
+[[ $address =~ ^0x[0-9a-fA-F]+$ ]] || exit 2
+
+# The layer-shell surface has exclusive keyboard focus. Let its close commit
+# before focusing the selected window, otherwise Hyprland restores the window
+# that was focused when the overlay opened.
+sleep 0.05
+hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null
