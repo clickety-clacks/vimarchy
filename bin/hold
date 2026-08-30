@@ -11,6 +11,9 @@ state_file=$state_dir/snapshot.json
 source_file=$state_dir/swap-source.json
 source_tmp=$state_dir/swap-source.json.tmp
 
+# A held key is a swap gesture, never the first half of a double tap.
+rm -f "$state_dir/tap-candidate.json" "$state_dir/tap-candidate.json.tmp"
+
 [[ -f $state_file ]] || exit 0
 [[ ! -f $source_file ]] || exit 0
 

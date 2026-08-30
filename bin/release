@@ -7,6 +7,8 @@ hint=${1:-}
 
 state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
 press_file=$state_dir/press.json
+repeat_key=${hint: -1}
+repeat_submap="vimarchy-double-tap-$repeat_key"
 
 # A long press has already promoted this key to the swap source. Its eventual
 # key-up must not also perform the normal tap action.
@@ -15,8 +17,18 @@ if [[ -f $state_dir/swap-source.json ]]; then
   exit 0
 fi
 
+# Make the repeat key capturable before snapshot lookup, shell IPC, or focus
+# work. The second-tap handler waits briefly for the validated state below.
+hyprctl dispatch "hl.dsp.submap(\"$repeat_submap\")" >/dev/null
+
 pending_hint=$(jq -r '.hint // ""' "$press_file" 2>/dev/null || true)
-[[ $pending_hint == "$hint" ]] || exit 0
+if [[ $pending_hint != "$hint" ]]; then
+  active_submap=$(hyprctl submap 2>/dev/null | tr -d '\n')
+  if [[ $active_submap == "$repeat_submap" ]]; then
+    hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+  fi
+  exit 0
+fi
 rm -f "$press_file" "$state_dir/press.json.tmp"
 
 exec "$(dirname -- "${BASH_SOURCE[0]}")/select" "$hint"

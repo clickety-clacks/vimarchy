@@ -13,6 +13,15 @@ if [[ -f $state_file ]]; then
   stable_id=$(jq -r --arg hint "$hint" '.windows[] | select(.hint == $hint) | .stableId' "$state_file" | head -n 1)
 fi
 
+if [[ $stable_id =~ ^[0-9a-fA-F]+$ ]]; then
+  # Arm the repeat key before shell rendering or focus IPC. Otherwise a very
+  # fast second press can land in the original selection map and be mistaken
+  # for another first tap.
+  "$(dirname -- "${BASH_SOURCE[0]}")/double-tap-arm" "$hint" "$stable_id"
+else
+  hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+fi
+
 # Keep the passive hint layer mapped for its brief selection flash.
 omarchy-shell shell call vimarchy beginSelection "$hint" >/dev/null 2>&1 || true
 
@@ -20,7 +29,6 @@ rm -f "$state_file" "$state_dir/snapshot.json.tmp" \
   "$state_dir/swap-source.json" "$state_dir/swap-source.json.tmp" \
   "$state_dir/press.json" "$state_dir/press.json.tmp"
 if [[ ! $stable_id =~ ^[0-9a-fA-F]+$ ]]; then
-  hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
   exit 0
 fi
 
@@ -29,7 +37,7 @@ fi
 address=$(hyprctl -j clients | jq -r --arg stable "$stable_id" '.[] | select(.stableId == $stable) | .address' | head -n 1)
 if [[ ! $address =~ ^0x[0-9a-fA-F]+$ ]]; then
   hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+  rm -f "$state_dir/double-tap.json" "$state_dir/double-tap.json.tmp"
   exit 0
 fi
 hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null
-exec "$(dirname -- "${BASH_SOURCE[0]}")/double-tap-arm" "$hint" "$stable_id"

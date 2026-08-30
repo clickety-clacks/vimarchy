@@ -8,7 +8,17 @@ key=${1:-}
 state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
 state_file=$state_dir/double-tap.json
 settings_file=${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/vimarchy.json
+candidate_file=$state_dir/tap-candidate.json
+consumed_file=$state_dir/double-tap-consumed.json
+consumed_tmp=$state_dir/double-tap-consumed.json.tmp
 
+# A fast second press can arrive after the release handler has installed its
+# map but before selection has finished resolving the stable window ID. Wait a
+# few milliseconds for that atomic state handoff instead of dropping the tap.
+for _ in {1..30}; do
+  [[ -f $state_file ]] && break
+  sleep 0.004
+done
 [[ -f $state_file ]] || exit 0
 state=$(<"$state_file")
 [[ $(jq -r '.key // ""' <<<"$state") == "$key" ]] || exit 0
@@ -17,6 +27,11 @@ hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
 
 hint=$(jq -r '.hint' <<<"$state")
 stable_id=$(jq -r '.stableId' <<<"$state")
+nonce=$(jq -r '.nonce' <<<"$state")
+printf '{"hint":"%s","stableId":"%s","nonce":"%s"}\n' \
+  "$hint" "$stable_id" "$nonce" >"$consumed_tmp"
+mv -f "$consumed_tmp" "$consumed_file"
+rm -f "$candidate_file" "$state_dir/tap-candidate.json.tmp"
 clients=$(hyprctl -j clients)
 window=$(jq -c --arg stable "$stable_id" '.[] | select(.stableId == $stable)' <<<"$clients" | head -n 1)
 [[ -n $window ]] || exit 0

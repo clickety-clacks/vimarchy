@@ -10,10 +10,28 @@ plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
 state_file=$state_dir/double-tap.json
 state_tmp=$state_dir/double-tap.json.tmp
+consumed_file=$state_dir/double-tap-consumed.json
 settings_file=${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/vimarchy.json
 key=${hint: -1}
 nonce="$$-$(date +%s%N)"
 
+# A second press can be consumed by the original selection map before this
+# first-release process reaches us. Never re-arm that completed gesture.
+if [[ -f $consumed_file ]] && jq -e --arg hint "$hint" --arg stable "$stable_id" \
+  '.hint == $hint and .stableId == $stable' "$consumed_file" >/dev/null 2>&1; then
+  exit 0
+fi
+
+umask 077
+mkdir -p "$state_dir"
+printf '{"hint":"%s","key":"%s","stableId":"%s","nonce":"%s","submap":"vimarchy-double-tap-%s"}\n' \
+  "$hint" "$key" "$stable_id" "$nonce" "$key" >"$state_tmp"
+mv -f "$state_tmp" "$state_file"
+
+hyprctl dispatch "hl.dsp.submap(\"vimarchy-double-tap-$key\")" >/dev/null
+
+# Configuration parsing and timeout startup happen after the key map is live;
+# neither should create a dead zone before the second press can be recognized.
 timeout_ms=280
 if [[ -f $settings_file ]]; then
   configured_timeout=$(jq -r '.doubleTap.timeoutMs // empty' "$settings_file" 2>/dev/null || true)
@@ -24,17 +42,4 @@ if [[ -f $settings_file ]]; then
   fi
 fi
 timeout_seconds=$(awk -v milliseconds="$timeout_ms" 'BEGIN { printf "%.3f", milliseconds / 1000 }')
-
-umask 077
-mkdir -p "$state_dir"
-jq -cn \
-  --arg hint "$hint" \
-  --arg key "$key" \
-  --arg stableId "$stable_id" \
-  --arg nonce "$nonce" \
-  --arg submap "vimarchy-double-tap-$key" \
-  '{hint:$hint, key:$key, stableId:$stableId, nonce:$nonce, submap:$submap}' >"$state_tmp"
-mv -f "$state_tmp" "$state_file"
-
-hyprctl dispatch "hl.dsp.submap(\"vimarchy-double-tap-$key\")" >/dev/null
 setsid -f "$plugin_dir/bin/double-tap-timeout" "$nonce" "$timeout_seconds"

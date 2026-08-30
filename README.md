@@ -134,7 +134,8 @@ hyprctl configerrors
   layout-specific double-tap action.
   `dwindle` and `scrolling` toggle a maximized working-area view that keeps the
   bar visible; `master` promotes the window and does nothing if it is already
-  master. The second tap window defaults to 280 ms.
+  master. Recognition happens on the second key-down, so no pause is required
+  between releasing the first tap and pressing the second.
 - Swap mode resolves both stable IDs again immediately before the operation,
   so a closed or replaced client cannot redirect the action.
 - Press Escape to cancel.
@@ -167,16 +168,19 @@ commands run without an implicit shell and receive `VIMARCHY_LAYOUT`,
 `VIMARCHY_WORKSPACE_ID`, `VIMARCHY_FULLSCREEN_STATE`, and `VIMARCHY_HINT`.
 Use an explicit `sh -lc` argv as above only when shell syntax is wanted. See
 [`vimarchy.example.json`](vimarchy.example.json) for the complete defaults.
+`timeoutMs` is measured from the first key-down to the second key-down,
+defaults to 280 ms, and is clamped to the supported 120–600 ms range.
 
 ## Keyboard safety
 
 Vimarchy's layer surface is input-passive: it never grabs the Wayland
 keyboard. Static Hyprland submaps distinguish release taps from long presses,
 route swap destinations, and briefly capture only the selected hint's final
-letter for double-tap detection. Other typing remains unbound in that transient
-map. Normal bindings are never removed or rewritten. `Super+Escape` always
-resets the submap before asking the overlay to close, even if the plugin is
-broken or missing.
+letter for double-tap detection. A first-press candidate also recognizes a
+second key-down that arrives before release IPC has installed that transient
+map. Other typing remains unbound. Normal bindings are never removed or
+rewritten. `Super+Escape` always resets the submap before asking the overlay to
+close, even if the plugin is broken or missing.
 
 ## Requirements
 

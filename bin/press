@@ -9,8 +9,61 @@ plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
 press_file=$state_dir/press.json
 press_tmp=$state_dir/press.json.tmp
+candidate_file=$state_dir/tap-candidate.json
+candidate_tmp=$state_dir/tap-candidate.json.tmp
+consumed_file=$state_dir/double-tap-consumed.json
+consumed_tmp=$state_dir/double-tap-consumed.json.tmp
+double_tap_file=$state_dir/double-tap.json
+double_tap_tmp=$state_dir/double-tap.json.tmp
+snapshot_file=$state_dir/snapshot.json
+settings_file=${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/vimarchy.json
 nonce="$$-$(date +%s%N)"
+now_ms=$(date +%s%3N)
+
+timeout_ms=280
+if [[ -f $settings_file ]]; then
+  configured_timeout=$(jq -r '.doubleTap.timeoutMs // empty' "$settings_file" 2>/dev/null || true)
+  if [[ $configured_timeout =~ ^[0-9]+$ ]]; then
+    (( configured_timeout < 120 )) && configured_timeout=120
+    (( configured_timeout > 600 )) && configured_timeout=600
+    timeout_ms=$configured_timeout
+  fi
+fi
+
+# If a very fast second key-down beats release IPC, consume the first press
+# candidate here so there is no minimum pause between taps.
+if [[ -f $candidate_file ]]; then
+  candidate=$(<"$candidate_file")
+  candidate_hint=$(jq -r '.hint // ""' <<<"$candidate")
+  candidate_stable=$(jq -r '.stableId // ""' <<<"$candidate")
+  candidate_nonce=$(jq -r '.nonce // ""' <<<"$candidate")
+  candidate_started=$(jq -r '.startedMs // 0' <<<"$candidate")
+  if [[ $candidate_hint == "$hint" && $candidate_stable =~ ^[0-9a-fA-F]+$ &&
+        $candidate_started =~ ^[0-9]+$ && $(( now_ms - candidate_started )) -le $timeout_ms ]]; then
+    key=${hint: -1}
+    printf '{"hint":"%s","stableId":"%s","nonce":"%s"}\n' \
+      "$hint" "$candidate_stable" "$candidate_nonce" >"$consumed_tmp"
+    mv -f "$consumed_tmp" "$consumed_file"
+    printf '{"hint":"%s","key":"%s","stableId":"%s","nonce":"%s","submap":"vimarchy-double-tap-%s"}\n' \
+      "$hint" "$key" "$candidate_stable" "$candidate_nonce" "$key" >"$double_tap_tmp"
+    mv -f "$double_tap_tmp" "$double_tap_file"
+    rm -f "$candidate_file" "$candidate_tmp" "$press_file" "$press_tmp"
+    hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+    omarchy-shell shell call vimarchy beginSelection "$hint" >/dev/null 2>&1 || true
+    exec "$plugin_dir/bin/double-tap" "$key"
+  fi
+fi
 
 jq -cn --arg hint "$hint" --arg nonce "$nonce" '{hint:$hint, nonce:$nonce}' >"$press_tmp"
 mv -f "$press_tmp" "$press_file"
+
+stable_id=""
+if [[ -f $snapshot_file ]]; then
+  stable_id=$(jq -r --arg hint "$hint" '.windows[] | select(.hint == $hint) | .stableId' "$snapshot_file" | head -n 1)
+fi
+if [[ $stable_id =~ ^[0-9a-fA-F]+$ ]]; then
+  printf '{"hint":"%s","stableId":"%s","nonce":"%s","startedMs":%s}\n' \
+    "$hint" "$stable_id" "$nonce" "$now_ms" >"$candidate_tmp"
+  mv -f "$candidate_tmp" "$candidate_file"
+fi
 setsid -f "$plugin_dir/bin/hold-after-delay" "$hint" "$nonce"
