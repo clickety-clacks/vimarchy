@@ -51,6 +51,12 @@ for first = 1, #hint_keys do
   end)
 end
 
+hl.define_submap("vimarchy-settings", function()
+  hl.bind("ESCAPE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
+  hl.bind("ALT + SPACE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
+  hl.bind("SUPER + ESCAPE", hl.dsp.submap("reset"))
+end)
+
 o.bind("ALT + SPACE", "Vimarchy window hints", vimarchy .. "/open")
 ```
 
@@ -68,7 +74,7 @@ hyprctl configerrors
 - Prioritizes home-row letters: `a s d f g j k l`, then the remaining letters.
 - Reserves `h` for settings: press `Alt+Space`, then `h`.
 - Keeps the window hints visible behind the settings card as a live opacity
-  preview; `Done` closes both.
+  preview; `Escape`, `Alt+Space`, or `Done` closes both.
 - Uses one-letter hints for up to 26 windows. Above that, all hints become
   unambiguous two-letter sequences such as `aa`, `as`, and `ad`.
 - Remembers assignments by Hyprland stable window ID, including windows on

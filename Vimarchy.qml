@@ -15,6 +15,7 @@ Item {
   property int loadGeneration: 0
   property string hintKeys: "asdfgjklqwertyuiopzxcvbnm"
   readonly property string snapshotPath: Qt.resolvedUrl("bin/current").toString().replace("file://", "")
+  readonly property string cancelPath: Qt.resolvedUrl("bin/cancel").toString().replace("file://", "")
   readonly property string settingsPath: Quickshell.env("HOME") + "/.config/omarchy/vimarchy.json"
   property real windowTintOpacity: 0.03
   property real badgeTintOpacity: 0.10
@@ -126,6 +127,12 @@ Item {
     onExited: function(exitCode) {
       if (exitCode !== 0) root.close()
     }
+  }
+
+  Process {
+    id: settingsCancelProcess
+    running: false
+    command: [root.cancelPath]
   }
 
   FileView {
@@ -291,7 +298,11 @@ Item {
           radius: Style.cornerRadius
           color: Color.menu.selectedBackground
           Text { anchors.centerIn: parent; text: "Done"; color: Color.menu.selectedText; font.family: Style.font.menuFamily }
-          MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.close() }
+          MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: if (!settingsCancelProcess.running) settingsCancelProcess.running = true
+          }
         }
       }
     }

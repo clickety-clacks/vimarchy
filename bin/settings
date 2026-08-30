@@ -6,3 +6,15 @@ set -euo pipefail
 # opacity controls have a live preview.
 hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
 omarchy-shell shell summon vimarchy '{"mode":"settings"}' >/dev/null
+
+# Route Escape only after the settings surface is confirmed visible.
+for _ in {1..100}; do
+  if hyprctl layers -j | jq -e '.. | objects | select(.namespace? == "vimarchy-settings")' >/dev/null; then
+    hyprctl dispatch 'hl.dsp.submap("vimarchy-settings")' >/dev/null
+    exit 0
+  fi
+  sleep 0.01
+done
+
+"$(dirname -- "${BASH_SOURCE[0]}")/cancel"
+exit 1
