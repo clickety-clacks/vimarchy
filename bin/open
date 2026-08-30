@@ -29,18 +29,19 @@ flock -n 9 || exit 0
 mv -f "$state_tmp" "$state_file"
 "$plugin_dir/bin/assign" "$state_file" "$assignments_file"
 
-window_count=$(jq -r '.windows | length' "$state_file")
+read -r window_count hint_length < <(jq -r '[(.windows | length), ((.windows[0].hint // "") | length)] | @tsv' "$state_file")
 if (( window_count == 0 )); then
   rm -f "$state_file"
   exit 0
 fi
 
 selection_submap=vimarchy
-if jq -e '.windows[0].hint | length == 2' "$state_file" >/dev/null; then
+if (( hint_length == 2 )); then
   selection_submap=vimarchy-double
 fi
 
-omarchy-shell shell summon vimarchy '{}' >/dev/null
+snapshot_payload=$(<"$state_file")
+omarchy-shell shell summon vimarchy "$snapshot_payload" >/dev/null
 
 # Enter the modal map only after the passive overlay is visibly mapped. If the
 # shell cannot show it, roll back without ever changing the user's keymap.

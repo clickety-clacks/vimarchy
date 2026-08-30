@@ -18,6 +18,10 @@ Item {
     if (snapshotProcess.running) return
     root.opened = false
     root.loadGeneration++
+    if (payloadJson && payloadJson !== "{}") {
+      root.applySnapshot(payloadJson, root.loadGeneration)
+      return
+    }
     snapshotProcess.generation = root.loadGeneration
     snapshotProcess.command = [root.snapshotPath]
     snapshotProcess.running = true

@@ -5,16 +5,15 @@ set -euo pipefail
 snapshot_file=${1:?snapshot path required}
 assignments_file=${2:?assignments path required}
 state_dir=$(dirname -- "$snapshot_file")
-bundle_tmp=$(mktemp "$state_dir/assign.XXXXXX")
 snapshot_tmp=$(mktemp "$state_dir/snapshot.XXXXXX")
 assignments_tmp=$(mktemp "$state_dir/assignments.XXXXXX")
-trap 'rm -f "$bundle_tmp" "$snapshot_tmp" "$assignments_tmp"' EXIT
+trap 'rm -f "$snapshot_tmp" "$assignments_tmp"' EXIT
 
 [[ -f $assignments_file ]] || printf '{}\n' >"$assignments_tmp"
 old_assignments=$assignments_file
 [[ -f $old_assignments ]] || old_assignments=$assignments_tmp
 
-jq -n \
+mapfile -t results < <(jq -cn \
   --slurpfile snapshot "$snapshot_file" \
   --slurpfile old "$old_assignments" '
   "asdfghjklqwertyuiopzxcvbnm" | split("") as $keys
@@ -45,15 +44,17 @@ jq -n \
             else .assignments[$id] = $hint | .used += [$hint]
             end
         end)) as $result
-  | {
+  | ({
       assignments: $result.assignments,
       snapshot: ($snapshot[0]
         | .windows |= map(. + { hint: $result.assignments[.stableId] })
         | .windows |= map(select(.hint != null)))
-    }
-' >"$bundle_tmp"
+    }) as $bundle
+  | $bundle.snapshot, $bundle.assignments
+')
 
-jq '.snapshot' "$bundle_tmp" >"$snapshot_tmp"
-jq '.assignments' "$bundle_tmp" >"$assignments_tmp"
+(( ${#results[@]} == 2 )) || exit 1
+printf '%s\n' "${results[0]}" >"$snapshot_tmp"
+printf '%s\n' "${results[1]}" >"$assignments_tmp"
 mv -f "$snapshot_tmp" "$snapshot_file"
 mv -f "$assignments_tmp" "$assignments_file"
