@@ -118,7 +118,12 @@ Item {
         ? WlrKeyboardFocus.Exclusive
         : WlrKeyboardFocus.None
 
-      Item {
+      onVisibleChanged: {
+        if (visible && focusedMonitor)
+          Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+      }
+
+      FocusScope {
         id: keyCatcher
         anchors.fill: parent
         focus: overlay.visible && overlay.focusedMonitor
@@ -130,8 +135,12 @@ Item {
             return
           }
 
-          if (event.text && root.hintKeys.indexOf(event.text.toLowerCase()) >= 0) {
-            root.activateHint(event.text)
+          var typed = String(event.text || "").toLowerCase()
+          if (typed === "" && event.key >= Qt.Key_0 && event.key <= Qt.Key_9)
+            typed = String.fromCharCode(48 + event.key - Qt.Key_0)
+
+          if (root.hintKeys.indexOf(typed) >= 0) {
+            root.activateHint(typed)
             event.accepted = true
           }
         }
