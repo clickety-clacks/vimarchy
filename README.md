@@ -25,7 +25,8 @@ end
 
 hl.define_submap("vimarchy", function()
   for slot = 1, #hint_keys do
-    hl.bind(hint_keys:sub(slot, slot), hl.dsp.exec_cmd(vimarchy .. "/select " .. slot))
+    local letter = hint_keys:sub(slot, slot)
+    hl.bind(letter, hl.dsp.exec_cmd(vimarchy .. "/select " .. letter))
   end
   vimarchy_escape_bindings()
 end)
@@ -43,8 +44,7 @@ for first = 1, #hint_keys do
   hl.define_submap("vimarchy-" .. first_letter, function()
     for second = 1, #hint_keys do
       local second_letter = hint_keys:sub(second, second)
-      local slot = (first - 1) * #hint_keys + second
-      hl.bind(second_letter, hl.dsp.exec_cmd(vimarchy .. "/select " .. slot))
+      hl.bind(second_letter, hl.dsp.exec_cmd(vimarchy .. "/select " .. first_letter .. second_letter))
     end
     vimarchy_escape_bindings()
   end)
@@ -67,6 +67,8 @@ hyprctl configerrors
 - Prioritizes home-row letters: `a s d f g h j k l`, then the remaining letters.
 - Uses one-letter hints for up to 26 windows. Above that, all hints become
   unambiguous two-letter sequences such as `aa`, `as`, and `ad`.
+- Remembers assignments by Hyprland stable window ID, including windows on
+  other workspaces. A letter is reused only after its window closes.
 - Supports multiple outputs and fractional scaling.
 - Press Escape to cancel.
 

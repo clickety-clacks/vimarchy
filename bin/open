@@ -6,6 +6,7 @@ plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
 state_file=$state_dir/snapshot.json
 state_tmp=$state_dir/snapshot.json.tmp
+assignments_file=$state_dir/assignments.json
 
 # Refuse to steal modal ownership from Ask or another Hyprland submap.
 active_submap=$(hyprctl submap 2>/dev/null | tr -d '\n')
@@ -26,6 +27,7 @@ flock -n 9 || exit 0
 
 "$plugin_dir/bin/snapshot" >"$state_tmp"
 mv -f "$state_tmp" "$state_file"
+"$plugin_dir/bin/assign" "$state_file" "$assignments_file"
 
 window_count=$(jq -r '.windows | length' "$state_file")
 if (( window_count == 0 )); then
@@ -34,7 +36,9 @@ if (( window_count == 0 )); then
 fi
 
 selection_submap=vimarchy
-(( window_count > 26 )) && selection_submap=vimarchy-double
+if jq -e '.windows[0].hint | length == 2' "$state_file" >/dev/null; then
+  selection_submap=vimarchy-double
+fi
 
 omarchy-shell shell summon vimarchy '{}' >/dev/null
 

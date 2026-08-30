@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+snapshot_file=${1:?snapshot path required}
+assignments_file=${2:?assignments path required}
+state_dir=$(dirname -- "$snapshot_file")
+bundle_tmp=$(mktemp "$state_dir/assign.XXXXXX")
+snapshot_tmp=$(mktemp "$state_dir/snapshot.XXXXXX")
+assignments_tmp=$(mktemp "$state_dir/assignments.XXXXXX")
+trap 'rm -f "$bundle_tmp" "$snapshot_tmp" "$assignments_tmp"' EXIT
+
+[[ -f $assignments_file ]] || printf '{}\n' >"$assignments_tmp"
+old_assignments=$assignments_file
+[[ -f $old_assignments ]] || old_assignments=$assignments_tmp
+
+jq -n \
+  --slurpfile snapshot "$snapshot_file" \
+  --slurpfile clients <(hyprctl -j clients) \
+  --slurpfile old "$old_assignments" '
+  "asdfghjklqwertyuiopzxcvbnm" | split("") as $keys
+  | ($snapshot[0].windows | map(.stableId)) as $visible
+  | ($clients[0]
+      | map(select(.mapped == true and (.stableId // "") != ""))
+      | map(.stableId)) as $all_clients
+  | (reduce ($visible + $all_clients)[] as $id
+      ([]; if index($id) == null then . + [$id] else . end)) as $live
+  | (if ($live | length) <= ($keys | length)
+      then $keys
+      else [$keys[] as $first | $keys[] as $second | $first + $second]
+    end) as $hints
+  | ($old[0] // {}) as $previous
+  | (reduce $live[] as $id
+      ({ assignments: {}, used: [] };
+        ($previous[$id] // "") as $hint
+        | if (($hints | index($hint)) != null and (.used | index($hint)) == null)
+          then .assignments[$id] = $hint | .used += [$hint]
+          else .
+          end)) as $preserved
+  | (reduce $live[] as $id
+      ($preserved;
+        if .assignments[$id] then .
+        else .used as $used
+          | ([ $hints[] as $candidate
+               | select(($used | index($candidate)) == null)
+               | $candidate ] | .[0]) as $hint
+          | if $hint == null then .
+            else .assignments[$id] = $hint | .used += [$hint]
+            end
+        end)) as $result
+  | {
+      assignments: $result.assignments,
+      snapshot: ($snapshot[0]
+        | .windows |= map(. + { hint: $result.assignments[.stableId] })
+        | .windows |= map(select(.hint != null)))
+    }
+' >"$bundle_tmp"
+
+jq '.snapshot' "$bundle_tmp" >"$snapshot_tmp"
+jq '.assignments' "$bundle_tmp" >"$assignments_tmp"
+mv -f "$snapshot_tmp" "$snapshot_file"
+mv -f "$assignments_tmp" "$assignments_file"

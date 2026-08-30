@@ -40,21 +40,10 @@ Item {
     try {
       var data = JSON.parse(String(raw || "{}"))
       var nextWindows = data.windows || []
-      var alphabetSize = root.hintKeys.length
-      var usePairs = nextWindows.length > alphabetSize
-      var available = usePairs ? alphabetSize * alphabetSize : alphabetSize
-
-      for (var i = 0; i < nextWindows.length && i < available; i++) {
-        if (usePairs) {
-          nextWindows[i].hint = root.hintKeys.charAt(Math.floor(i / alphabetSize))
-            + root.hintKeys.charAt(i % alphabetSize)
-        } else {
-          nextWindows[i].hint = root.hintKeys.charAt(i)
-        }
-      }
+      var available = root.hintKeys.length * root.hintKeys.length
 
       root.monitors = data.monitors || []
-      root.windows = nextWindows.slice(0, available)
+      root.windows = nextWindows.filter(function(window) { return !!window.hint }).slice(0, available)
       root.opened = root.windows.length > 0
     } catch (error) {
       console.warn("vimarchy: could not parse Hyprland snapshot:", error)

@@ -2,9 +2,8 @@
 
 set -euo pipefail
 
-slot=${1:-}
-[[ $slot =~ ^[1-9][0-9]{0,2}$ ]] || exit 2
-(( slot <= 676 )) || exit 2
+hint=${1:-}
+[[ $hint =~ ^[a-z]{1,2}$ ]] || exit 2
 
 state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
 state_file=$state_dir/snapshot.json
@@ -14,7 +13,7 @@ hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
 
 stable_id=""
 if [[ -f $state_file ]]; then
-  stable_id=$(jq -r --argjson index "$((slot - 1))" '.windows[$index].stableId // ""' "$state_file")
+  stable_id=$(jq -r --arg hint "$hint" '.windows[] | select(.hint == $hint) | .stableId' "$state_file" | head -n 1)
 fi
 
 omarchy-shell shell hide vimarchy >/dev/null 2>&1 || true
