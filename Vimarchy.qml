@@ -31,6 +31,7 @@ Item {
   property real badgeTintOpacity: 0.21
   readonly property real connectorOpacity: 0.60
   property bool settingsLoaded: false
+  property var settingsData: ({})
 
   function setOpacity(name, value) {
     var next = Math.max(0, Math.min(0.30, Math.round(value * 100) / 100))
@@ -50,6 +51,7 @@ Item {
   function loadSettings(raw) {
     var data = {}
     try { data = JSON.parse(raw || "{}") } catch (error) { data = {} }
+    root.settingsData = data
     var windowOpacity = Number(data.windowTintOpacity)
     var badgeOpacity = Number(data.badgeTintOpacity)
     root.windowTintOpacity = isFinite(windowOpacity) ? Math.max(0, Math.min(0.30, windowOpacity)) : 0.07
@@ -59,10 +61,13 @@ Item {
 
   function saveSettings() {
     if (!root.settingsLoaded) return
-    settingsFile.setText(JSON.stringify({
-      windowTintOpacity: root.windowTintOpacity,
-      badgeTintOpacity: root.badgeTintOpacity
-    }, null, 2) + "\n")
+    var data = {}
+    var source = root.settingsData || {}
+    for (var key in source) data[key] = source[key]
+    data.windowTintOpacity = root.windowTintOpacity
+    data.badgeTintOpacity = root.badgeTintOpacity
+    root.settingsData = data
+    settingsFile.setText(JSON.stringify(data, null, 2) + "\n")
   }
 
   function open(payloadJson) {

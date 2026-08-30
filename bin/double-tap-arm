@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+hint=${1:-}
+stable_id=${2:-}
+[[ $hint =~ ^[a-z]{1,2}$ && $stable_id =~ ^[0-9a-fA-F]+$ ]] || exit 2
+
+plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+state_file=$state_dir/double-tap.json
+state_tmp=$state_dir/double-tap.json.tmp
+settings_file=${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/vimarchy.json
+key=${hint: -1}
+nonce="$$-$(date +%s%N)"
+
+timeout_ms=280
+if [[ -f $settings_file ]]; then
+  configured_timeout=$(jq -r '.doubleTap.timeoutMs // empty' "$settings_file" 2>/dev/null || true)
+  if [[ $configured_timeout =~ ^[0-9]+$ ]]; then
+    (( configured_timeout < 120 )) && configured_timeout=120
+    (( configured_timeout > 600 )) && configured_timeout=600
+    timeout_ms=$configured_timeout
+  fi
+fi
+timeout_seconds=$(awk -v milliseconds="$timeout_ms" 'BEGIN { printf "%.3f", milliseconds / 1000 }')
+
+umask 077
+mkdir -p "$state_dir"
+jq -cn \
+  --arg hint "$hint" \
+  --arg key "$key" \
+  --arg stableId "$stable_id" \
+  --arg nonce "$nonce" \
+  --arg submap "vimarchy-double-tap-$key" \
+  '{hint:$hint, key:$key, stableId:$stableId, nonce:$nonce, submap:$submap}' >"$state_tmp"
+mv -f "$state_tmp" "$state_file"
+
+hyprctl dispatch "hl.dsp.submap(\"vimarchy-double-tap-$key\")" >/dev/null
+setsid -f "$plugin_dir/bin/double-tap-timeout" "$nonce" "$timeout_seconds"

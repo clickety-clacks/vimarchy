@@ -10,4 +10,5 @@ hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
 omarchy-shell shell hide vimarchy >/dev/null 2>&1 || true
 rm -f "$state_dir/snapshot.json" "$state_dir/snapshot.json.tmp" \
   "$state_dir/swap-source.json" "$state_dir/swap-source.json.tmp" \
-  "$state_dir/press.json" "$state_dir/press.json.tmp"
+  "$state_dir/press.json" "$state_dir/press.json.tmp" \
+  "$state_dir/double-tap.json" "$state_dir/double-tap.json.tmp"

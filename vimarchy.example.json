@@ -1,0 +1,12 @@
+{
+  "windowTintOpacity": 0.07,
+  "badgeTintOpacity": 0.21,
+  "doubleTap": {
+    "timeoutMs": 280,
+    "layouts": {
+      "dwindle": "toggle-maximized",
+      "scrolling": "toggle-maximized",
+      "master": "promote-master"
+    }
+  }
+}

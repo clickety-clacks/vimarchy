@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+nonce=${1:-}
+timeout_seconds=${2:-}
+[[ -n $nonce && $timeout_seconds =~ ^[0-9]+([.][0-9]+)?$ ]] || exit 2
+
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+state_file=$state_dir/double-tap.json
+
+sleep "$timeout_seconds"
+[[ -f $state_file ]] || exit 0
+jq -e --arg nonce "$nonce" '.nonce == $nonce' "$state_file" >/dev/null 2>&1 || exit 0
+
+expected_submap=$(jq -r '.submap' "$state_file")
+active_submap=$(hyprctl submap 2>/dev/null | tr -d '\n')
+if [[ $active_submap == "$expected_submap" ]]; then
+  hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+fi
+rm -f "$state_file" "$state_dir/double-tap.json.tmp"

@@ -8,25 +8,28 @@ hint=${1:-}
 state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
 state_file=$state_dir/snapshot.json
 
-# Always release the modal map, even if the selected window disappeared.
-hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
-
 stable_id=""
 if [[ -f $state_file ]]; then
   stable_id=$(jq -r --arg hint "$hint" '.windows[] | select(.hint == $hint) | .stableId' "$state_file" | head -n 1)
 fi
 
-# Keep the passive hint layer mapped for its selection flash and three-second
-# fade. The submap is already reset, so normal input resumes immediately.
+# Keep the passive hint layer mapped for its brief selection flash.
 omarchy-shell shell call vimarchy beginSelection "$hint" >/dev/null 2>&1 || true
 
 rm -f "$state_file" "$state_dir/snapshot.json.tmp" \
   "$state_dir/swap-source.json" "$state_dir/swap-source.json.tmp" \
   "$state_dir/press.json" "$state_dir/press.json.tmp"
-[[ $stable_id =~ ^[0-9a-fA-F]+$ ]] || exit 0
+if [[ ! $stable_id =~ ^[0-9a-fA-F]+$ ]]; then
+  hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+  exit 0
+fi
 
 # stableId survives address changes. Re-resolve it at activation time so a
 # closed/replaced window cannot redirect selection to the wrong client.
 address=$(hyprctl -j clients | jq -r --arg stable "$stable_id" '.[] | select(.stableId == $stable) | .address' | head -n 1)
-[[ $address =~ ^0x[0-9a-fA-F]+$ ]] || exit 0
+if [[ ! $address =~ ^0x[0-9a-fA-F]+$ ]]; then
+  hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+  exit 0
+fi
 hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null
+exec "$(dirname -- "${BASH_SOURCE[0]}")/double-tap-arm" "$hint" "$stable_id"

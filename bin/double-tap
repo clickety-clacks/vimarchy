@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+key=${1:-}
+[[ $key =~ ^[a-z]$ ]] || exit 2
+
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+state_file=$state_dir/double-tap.json
+settings_file=${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/vimarchy.json
+
+[[ -f $state_file ]] || exit 0
+state=$(<"$state_file")
+[[ $(jq -r '.key // ""' <<<"$state") == "$key" ]] || exit 0
+rm -f "$state_file" "$state_dir/double-tap.json.tmp"
+hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+
+hint=$(jq -r '.hint' <<<"$state")
+stable_id=$(jq -r '.stableId' <<<"$state")
+clients=$(hyprctl -j clients)
+window=$(jq -c --arg stable "$stable_id" '.[] | select(.stableId == $stable)' <<<"$clients" | head -n 1)
+[[ -n $window ]] || exit 0
+
+address=$(jq -r '.address' <<<"$window")
+workspace_id=$(jq -r '.workspace.id' <<<"$window")
+fullscreen=$(jq -r '.fullscreen // 0' <<<"$window")
+[[ $address =~ ^0x[0-9a-fA-F]+$ && $workspace_id =~ ^-?[0-9]+$ ]] || exit 0
+
+hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null
+layout=$(hyprctl -j activeworkspace | jq -r '.tiledLayout // ""')
+[[ -n $layout ]] || exit 0
+
+action=""
+if [[ -f $settings_file ]]; then
+  action=$(jq -c --arg layout "$layout" '.doubleTap.layouts[$layout] // empty' "$settings_file" 2>/dev/null || true)
+fi
+
+run_maximize_toggle() {
+  local operation=set
+  [[ $fullscreen == 1 ]] && operation=unset
+  hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"maximized\", action = \"$operation\", layout_aware = false, window = \"address:$address\" })" >/dev/null
+}
+
+run_builtin() {
+  case "$1" in
+    toggle-maximized) run_maximize_toggle ;;
+    promote-master) hyprctl dispatch 'hl.dsp.layout("swapwithmaster master ignoremaster")' >/dev/null ;;
+    disabled) return 0 ;;
+    *) return 2 ;;
+  esac
+}
+
+if [[ -z $action ]]; then
+  case "$layout" in
+    dwindle|scrolling) run_builtin toggle-maximized ;;
+    master) run_builtin promote-master ;;
+  esac
+  exit 0
+fi
+
+if [[ $(jq -r 'type' <<<"$action") == string ]]; then
+  run_builtin "$(jq -r . <<<"$action")"
+  exit
+fi
+
+if [[ $(jq -r 'type' <<<"$action") == array ]]; then
+  mapfile -t command < <(jq -r '.[] | select(type == "string")' <<<"$action")
+elif [[ $(jq -r 'type' <<<"$action") == object ]]; then
+  mapfile -t command < <(jq -r '.command[]? | select(type == "string")' <<<"$action")
+else
+  exit 0
+fi
+(( ${#command[@]} > 0 )) || exit 0
+
+VIMARCHY_LAYOUT=$layout \
+VIMARCHY_WINDOW_ADDRESS=$address \
+VIMARCHY_WINDOW_STABLE_ID=$stable_id \
+VIMARCHY_WORKSPACE_ID=$workspace_id \
+VIMARCHY_FULLSCREEN_STATE=$fullscreen \
+VIMARCHY_HINT=$hint \
+  "${command[@]}"

@@ -86,6 +86,18 @@ for first = 1, #hint_keys do
   end)
 end
 
+-- After a normal selection, only a quick repeat of that hint's final letter is
+-- intercepted. Every other key continues to the newly focused application.
+for slot = 1, #hint_keys do
+  local letter = hint_keys:sub(slot, slot)
+  hl.define_submap("vimarchy-double-tap-" .. letter, function()
+    hl.bind(letter, hl.dsp.exec_cmd(vimarchy .. "/double-tap " .. letter))
+    hl.bind("ESCAPE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
+    hl.bind("ALT + SPACE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
+    hl.bind("SUPER + ESCAPE", hl.dsp.submap("reset"))
+  end)
+end
+
 hl.define_submap("vimarchy-settings", function()
   hl.bind("ESCAPE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
   hl.bind("ALT + SPACE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
@@ -118,16 +130,51 @@ hyprctl configerrors
 - Holding the final key of a hint for 350 ms enters swap mode. The source
   window tint becomes 50% opaque and lines connect
   its hint to every available destination; tapping a destination swaps them.
+- Quickly repeating a selected hint's final letter focuses it and runs a
+  layout-specific double-tap action.
+  `dwindle` and `scrolling` toggle a maximized working-area view that keeps the
+  bar visible; `master` promotes the window and does nothing if it is already
+  master. The second tap window defaults to 280 ms.
 - Swap mode resolves both stable IDs again immediately before the operation,
   so a closed or replaced client cannot redirect the action.
 - Press Escape to cancel.
+
+## Double-tap actions
+
+Vimarchy reads optional double-tap configuration from
+`~/.config/omarchy/vimarchy.json`. Omitted layouts retain their defaults. A
+layout can select a built-in action, be disabled, or invoke a command directly:
+
+```json
+{
+  "doubleTap": {
+    "timeoutMs": 280,
+    "layouts": {
+      "dwindle": "toggle-maximized",
+      "scrolling": ["my-scrolling-focus-script"],
+      "master": "promote-master",
+      "custom-layout": {
+        "command": ["sh", "-lc", "do-something-with $VIMARCHY_WINDOW_ADDRESS"]
+      }
+    }
+  }
+}
+```
+
+Built-ins are `toggle-maximized`, `promote-master`, and `disabled`. Callback
+commands run without an implicit shell and receive `VIMARCHY_LAYOUT`,
+`VIMARCHY_WINDOW_ADDRESS`, `VIMARCHY_WINDOW_STABLE_ID`,
+`VIMARCHY_WORKSPACE_ID`, `VIMARCHY_FULLSCREEN_STATE`, and `VIMARCHY_HINT`.
+Use an explicit `sh -lc` argv as above only when shell syntax is wanted. See
+[`vimarchy.example.json`](vimarchy.example.json) for the complete defaults.
 
 ## Keyboard safety
 
 Vimarchy's layer surface is input-passive: it never grabs the Wayland
 keyboard. Static Hyprland submaps distinguish release taps from long presses,
-then route swap destinations, Escape, and the Vimarchy toggle while hints are
-visible. Normal bindings are never removed or rewritten. `Super+Escape` always
+route swap destinations, and briefly capture only the selected hint's final
+letter for double-tap detection. Other typing remains unbound in that transient
+map. Normal bindings are never removed or rewritten. `Super+Escape` always
 resets the submap before asking the overlay to close, even if the plugin is
 broken or missing.
 
