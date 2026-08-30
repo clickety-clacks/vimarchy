@@ -72,7 +72,11 @@ Item {
       if (root.windows[i].hint === hint) {
         var address = root.windows[i].address
         root.close()
-        Quickshell.execDetached(["hyprctl", "dispatch", "focuswindow", "address:" + address])
+        Quickshell.execDetached([
+          "hyprctl",
+          "dispatch",
+          "hl.dsp.focus({ window = \"address:" + address + "\" })"
+        ])
         return
       }
     }
