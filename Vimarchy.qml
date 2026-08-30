@@ -227,7 +227,7 @@ Item {
     Rectangle {
       id: settingsCard
       width: 440
-      height: 250
+      height: settingsContent.implicitHeight + Style.space(36)
       anchors.centerIn: parent
       radius: Style.cornerRadius
       color: Color.menu.background
@@ -235,8 +235,13 @@ Item {
       border.color: Color.menu.border
 
       Column {
-        anchors.fill: parent
-        anchors.margins: Style.space(24)
+        id: settingsContent
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.topMargin: Style.space(24)
+        anchors.leftMargin: Style.space(24)
+        anchors.rightMargin: Style.space(24)
         spacing: Style.space(18)
 
         Text {
