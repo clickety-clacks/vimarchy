@@ -124,11 +124,12 @@ Item {
           Qt.callLater(function() { keyCatcher.forceActiveFocus() })
       }
 
-      FocusScope {
+      Item {
         id: keyCatcher
         anchors.fill: parent
-        focus: overlay.visible && overlay.focusedMonitor
+        focus: true
 
+        Keys.priority: Keys.BeforeItem
         Keys.onPressed: function(event) {
           if (event.key === Qt.Key_Escape) {
             root.close()
