@@ -22,8 +22,8 @@ Item {
   readonly property string snapshotPath: Qt.resolvedUrl("bin/current").toString().replace("file://", "")
   readonly property string cancelPath: Qt.resolvedUrl("bin/cancel").toString().replace("file://", "")
   readonly property string settingsPath: Quickshell.env("HOME") + "/.config/omarchy/vimarchy.json"
-  property real windowTintOpacity: 0.03
-  property real badgeTintOpacity: 0.10
+  property real windowTintOpacity: 0.07
+  property real badgeTintOpacity: 0.21
   property bool settingsLoaded: false
 
   function setOpacity(name, value) {
@@ -46,8 +46,8 @@ Item {
     try { data = JSON.parse(raw || "{}") } catch (error) { data = {} }
     var windowOpacity = Number(data.windowTintOpacity)
     var badgeOpacity = Number(data.badgeTintOpacity)
-    root.windowTintOpacity = isFinite(windowOpacity) ? Math.max(0, Math.min(0.30, windowOpacity)) : 0.03
-    root.badgeTintOpacity = isFinite(badgeOpacity) ? Math.max(0, Math.min(0.30, badgeOpacity)) : 0.10
+    root.windowTintOpacity = isFinite(windowOpacity) ? Math.max(0, Math.min(0.30, windowOpacity)) : 0.07
+    root.badgeTintOpacity = isFinite(badgeOpacity) ? Math.max(0, Math.min(0.30, badgeOpacity)) : 0.21
     root.settingsLoaded = true
   }
 
