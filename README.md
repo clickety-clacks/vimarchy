@@ -52,7 +52,7 @@ end
 
 o.bind("ALT + SPACE", "Vimarchy window hints", vimarchy .. "/open")
 hl.unbind("SUPER + comma")
-o.bind("SUPER + comma", "Vimarchy opacity", "omarchy-shell shell toggle vimarchy '{\"mode\":\"settings\"}'")
+o.bind("SUPER + code:59", "Vimarchy opacity", "omarchy-shell shell toggle vimarchy '{\"mode\":\"settings\"}'")
 ```
 
 Hyprland reloads the binding automatically. Validate it with:
