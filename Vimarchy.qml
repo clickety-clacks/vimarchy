@@ -110,28 +110,45 @@ Item {
       Repeater {
         model: root.windowsFor(overlay.modelData.name)
 
-        delegate: Rectangle {
-          id: badge
+        delegate: Item {
+          id: windowHint
           required property var modelData
+          readonly property color accentColor: modelData.focused
+            ? Color.menu.selectedText : Color.menu.text
           readonly property int badgeSize: Math.max(72, Math.min(132,
             Math.min(modelData.size[0], modelData.size[1]) * 0.34))
 
-          width: badgeSize
-          height: badgeSize
-          radius: Math.min(Style.cornerRadius, badgeSize / 5)
-          x: modelData.at[0] - overlay.monitor.x + (modelData.size[0] - width) / 2
-          y: modelData.at[1] - overlay.monitor.y + (modelData.size[1] - height) / 2
-          color: modelData.focused ? Color.menu.selectedBackground : Color.menu.background
-          border.width: Math.max(2, Style.space(2))
-          border.color: Color.menu.border
+          x: modelData.at[0] - overlay.monitor.x
+          y: modelData.at[1] - overlay.monitor.y
+          width: modelData.size[0]
+          height: modelData.size[1]
 
-          Text {
+          Rectangle {
+            anchors.fill: parent
+            color: Qt.rgba(windowHint.accentColor.r, windowHint.accentColor.g,
+              windowHint.accentColor.b, 0.03)
+            border.width: Math.max(2, Style.space(2))
+            border.color: windowHint.accentColor
+            radius: Style.cornerRadius
+          }
+
+          Rectangle {
+            id: badge
             anchors.centerIn: parent
-            text: badge.modelData.hint.toUpperCase()
-            color: badge.modelData.focused ? Color.menu.selectedText : Color.menu.text
-            font.family: Style.font.menuFamily
-            font.pixelSize: Math.round(badge.height * (text.length > 1 ? 0.46 : 0.62))
-            font.bold: true
+            width: windowHint.badgeSize
+            height: windowHint.badgeSize
+            radius: Math.min(Style.cornerRadius, width / 5)
+            color: Qt.rgba(windowHint.accentColor.r, windowHint.accentColor.g,
+              windowHint.accentColor.b, 0.10)
+
+            Text {
+              anchors.centerIn: parent
+              text: windowHint.modelData.hint.toUpperCase()
+              color: windowHint.accentColor
+              font.family: Style.font.menuFamily
+              font.pixelSize: Math.round(badge.height * (text.length > 1 ? 0.46 : 0.62))
+              font.bold: true
+            }
           }
         }
       }
