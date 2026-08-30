@@ -2,9 +2,7 @@
 
 set -euo pipefail
 
-plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-
-# Leave the selection mode before replacing it with the keyboard-passive
-# settings surface.
-"$plugin_dir/bin/cancel"
+# Return normal shortcuts, but keep the passive hint layer visible so the
+# opacity controls have a live preview.
+hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
 omarchy-shell shell summon vimarchy '{"mode":"settings"}' >/dev/null

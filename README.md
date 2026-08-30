@@ -67,6 +67,8 @@ hyprctl configerrors
 - Includes visible special-workspace and pinned windows.
 - Prioritizes home-row letters: `a s d f g j k l`, then the remaining letters.
 - Reserves `h` for settings: press `Alt+Space`, then `h`.
+- Keeps the window hints visible behind the settings card as a live opacity
+  preview; `Done` closes both.
 - Uses one-letter hints for up to 26 windows. Above that, all hints become
   unambiguous two-letter sequences such as `aa`, `as`, and `ad`.
 - Remembers assignments by Hyprland stable window ID, including windows on

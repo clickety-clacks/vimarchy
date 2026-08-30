@@ -9,7 +9,7 @@ Item {
   id: root
 
   property bool opened: false
-  property bool settingsMode: false
+  property bool settingsOpen: false
   property var windows: []
   property var monitors: []
   property int loadGeneration: 0
@@ -49,13 +49,12 @@ Item {
     try {
       var payload = JSON.parse(String(payloadJson || "{}"))
       if (payload.mode === "settings") {
-        root.settingsMode = true
-        root.opened = true
+        root.settingsOpen = true
         return
       }
     } catch (error) { /* A malformed snapshot is handled below. */ }
     if (snapshotProcess.running) return
-    root.settingsMode = false
+    root.settingsOpen = false
     root.opened = false
     root.loadGeneration++
     if (payloadJson && payloadJson !== "{}") {
@@ -70,7 +69,7 @@ Item {
   function close() {
     root.loadGeneration++
     root.opened = false
-    root.settingsMode = false
+    root.settingsOpen = false
     root.windows = []
     root.monitors = []
   }
@@ -154,7 +153,7 @@ Item {
       id: overlay
       required property var modelData
       screen: modelData
-      visible: root.opened && !root.settingsMode
+      visible: root.opened
 
       readonly property var monitor: root.monitorFor(modelData.name)
       readonly property bool focusedMonitor: monitor ? monitor.focused : false
@@ -216,7 +215,7 @@ Item {
 
   PanelWindow {
     id: settingsWindow
-    visible: root.opened && root.settingsMode
+    visible: root.opened && root.settingsOpen
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
