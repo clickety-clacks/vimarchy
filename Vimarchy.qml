@@ -14,6 +14,11 @@ Item {
   property var monitors: []
   property int loadGeneration: 0
   property string hintKeys: "asdfgjklqwertyuiopzxcvbnm"
+  readonly property var hintPalette: [
+    "#818cf8", "#a78bfa", "#c084fc", "#e879f9", "#f472b6",
+    "#fb7185", "#fb923c", "#facc15", "#a3e635", "#4ade80",
+    "#2dd4bf", "#22d3ee", "#38bdf8", "#60a5fa"
+  ]
   readonly property string snapshotPath: Qt.resolvedUrl("bin/current").toString().replace("file://", "")
   readonly property string cancelPath: Qt.resolvedUrl("bin/cancel").toString().replace("file://", "")
   readonly property string settingsPath: Quickshell.env("HOME") + "/.config/omarchy/vimarchy.json"
@@ -26,6 +31,14 @@ Item {
     if (name === "window") root.windowTintOpacity = next
     else root.badgeTintOpacity = next
     if (root.settingsLoaded) settingsSaveTimer.restart()
+  }
+
+  function colorForHint(hint) {
+    var first = root.hintKeys.indexOf(String(hint || "").charAt(0))
+    var second = root.hintKeys.indexOf(String(hint || "").charAt(1))
+    var index = second < 0 ? first : first * root.hintKeys.length + second
+    if (index < 0) index = 0
+    return root.hintPalette[index % root.hintPalette.length]
   }
 
   function loadSettings(raw) {
@@ -178,7 +191,7 @@ Item {
         delegate: Item {
           id: windowHint
           required property var modelData
-          readonly property color accentColor: Color.accent
+          readonly property color accentColor: root.colorForHint(modelData.hint)
           readonly property int badgeSize: Math.max(72, Math.min(132,
             Math.min(modelData.size[0], modelData.size[1]) * 0.34))
 
