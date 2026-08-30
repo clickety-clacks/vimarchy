@@ -292,7 +292,7 @@ Item {
           spacing: Style.space(4)
           Row {
             width: parent.width
-            Text { text: "Hint box background"; color: Color.menu.text; font.family: Style.font.menuFamily; width: parent.width - 60 }
+            Text { text: "Hint circle background"; color: Color.menu.text; font.family: Style.font.menuFamily; width: parent.width - 60 }
             Text { text: Math.round(root.badgeTintOpacity * 100) + "%"; color: Color.menu.text; font.family: Style.font.menuFamily; width: 60; horizontalAlignment: Text.AlignRight }
           }
           Slider {
