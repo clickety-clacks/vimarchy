@@ -13,7 +13,7 @@ Item {
   property var windows: []
   property var monitors: []
   property int loadGeneration: 0
-  property string hintKeys: "asdfgjklqwertyuiopzxcvbnm"
+  property string hintKeys: "asdfghjklqwertyuiopzxcvbnm"
   readonly property var hintPalette: [
     "#818cf8", "#a78bfa", "#c084fc", "#e879f9", "#f472b6",
     "#fb7185", "#fb923c", "#facc15", "#a3e635", "#4ade80",

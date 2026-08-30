@@ -15,10 +15,10 @@ Add the static modal map and launcher to `~/.config/hypr/bindings.lua`:
 
 ```lua
 local vimarchy = os.getenv("HOME") .. "/.config/omarchy/plugins/vimarchy/bin"
-local hint_keys = "asdfgjklqwertyuiopzxcvbnm"
+local hint_keys = "asdfghjklqwertyuiopzxcvbnm"
 
 local function vimarchy_escape_bindings()
-  hl.bind("h", hl.dsp.exec_cmd(vimarchy .. "/settings"))
+  hl.bind("SUPER + comma", hl.dsp.exec_cmd(vimarchy .. "/settings"))
   hl.bind("ESCAPE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
   hl.bind("ALT + SPACE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
   hl.bind("SUPER + ESCAPE", hl.dsp.submap("reset"))
@@ -71,8 +71,8 @@ hyprctl configerrors
 
 - Shows only mapped windows on the workspaces currently visible across outputs.
 - Includes visible special-workspace and pinned windows.
-- Prioritizes home-row letters: `a s d f g j k l`, then the remaining letters.
-- Reserves `h` for settings: press `Alt+Space`, then `h`.
+- Prioritizes home-row letters: `a s d f g h j k l`, then the remaining letters.
+- Opens settings from the active hint map with `Super+,`.
 - Keeps the window hints visible behind the settings card as a live opacity
   preview; `Escape`, `Alt+Space`, or `Done` closes both.
 - Uses one-letter hints for up to 26 windows. Above that, all hints become
