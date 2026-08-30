@@ -13,7 +13,7 @@ exchange those two windows directly through Hyprland.
 ## Install
 
 ```bash
-omarchy plugin add https://github.com/leftspin/vimarchy --enable
+omarchy plugin add https://github.com/clickety-clacks/vimarchy --enable
 ```
 
 Add the static modal map and launcher to `~/.config/hypr/bindings.lua`:
