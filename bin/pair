@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+hint=${1:-}
+[[ $hint =~ ^[a-z]{1,2}$ ]] || exit 2
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+state_file=$state_dir/snapshot.json
+source_file=$state_dir/swap-source.json
+[[ -f $state_file && -f $source_file ]] || exit 0
+source_stable=$(jq -r '.stableId // ""' "$source_file")
+target_stable=$(jq -r --arg hint "$hint" '.windows[] | select(.hint == $hint) | .stableId' "$state_file" | head -n1)
+if [[ ! $source_stable =~ ^[0-9a-fA-F]+$ || ! $target_stable =~ ^[0-9a-fA-F]+$ || $source_stable == "$target_stable" ]]; then
+  omarchy-shell shell call vimarchy cancelHold "$hint" >/dev/null 2>&1 || true
+  exit 0
+fi
+clients=$(hyprctl -j clients)
+source=$(jq -c --arg stable "$source_stable" '.[] | select(.stableId == $stable)' <<<"$clients" | head -n1)
+target=$(jq -c --arg stable "$target_stable" '.[] | select(.stableId == $stable)' <<<"$clients" | head -n1)
+[[ -n $source && -n $target ]] || exit 0
+source_address=$(jq -r .address <<<"$source")
+target_address=$(jq -r .address <<<"$target")
+source_workspace=$(jq -r '.workspace.id' <<<"$source")
+target_workspace=$(jq -r '.workspace.id' <<<"$target")
+[[ $source_workspace == "$target_workspace" ]] || exit 0
+layout=$(hyprctl -j workspaces | jq -r --argjson id "$target_workspace" '.[] | select(.id == $id) | .tiledLayout')
+if [[ $layout != dwindle ]]; then
+  omarchy-shell shell call vimarchy cancelHold "$hint" >/dev/null 2>&1 || true
+  exit 0
+fi
+read -r sx sy < <(jq -r '[.at[0] + .size[0]/2, .at[1] + .size[1]/2] | @tsv' <<<"$source")
+read -r tx ty < <(jq -r '[.at[0] + .size[0]/2, .at[1] + .size[1]/2] | @tsv' <<<"$target")
+direction=$(awk -v sx="$sx" -v sy="$sy" -v tx="$tx" -v ty="$ty" 'BEGIN { dx=sx-tx; dy=sy-ty; if (dx*dx >= dy*dy) print dx < 0 ? "l" : "r"; else print dy < 0 ? "u" : "d" }')
+hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+omarchy-shell shell hide vimarchy >/dev/null 2>&1 || true
+hyprctl dispatch "hl.dsp.window.float({ action = \"set\", window = \"address:$source_address\" })" >/dev/null
+hyprctl dispatch "hl.dsp.focus({ window = \"address:$target_address\" })" >/dev/null
+hyprctl dispatch "hl.dsp.layout(\"preselect $direction\")" >/dev/null
+hyprctl dispatch "hl.dsp.window.float({ action = \"unset\", window = \"address:$source_address\" })" >/dev/null
+hyprctl dispatch "hl.dsp.focus({ window = \"address:$source_address\" })" >/dev/null
+rm -f "$state_file" "$source_file" "$state_dir/swap-press.json" "$state_dir/swap-press.json.tmp"

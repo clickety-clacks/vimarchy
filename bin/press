@@ -66,4 +66,5 @@ if [[ $stable_id =~ ^[0-9a-fA-F]+$ ]]; then
     "$hint" "$stable_id" "$nonce" "$now_ms" >"$candidate_tmp"
   mv -f "$candidate_tmp" "$candidate_file"
 fi
+omarchy-shell shell call vimarchy beginHold "$hint" >/dev/null 2>&1 || true
 setsid -f "$plugin_dir/bin/hold-after-delay" "$hint" "$nonce"

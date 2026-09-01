@@ -62,7 +62,8 @@ end
 hl.define_submap("vimarchy-swap", function()
   for slot = 1, #hint_keys do
     local letter = hint_keys:sub(slot, slot)
-    hl.bind(letter, hl.dsp.exec_cmd(vimarchy .. "/swap " .. letter))
+    hl.bind(letter, hl.dsp.exec_cmd(vimarchy .. "/swap-press " .. letter))
+    hl.bind(letter, hl.dsp.exec_cmd(vimarchy .. "/swap-release " .. letter), { release = true })
   end
   vimarchy_escape_bindings()
 end)
@@ -80,7 +81,9 @@ for first = 1, #hint_keys do
   hl.define_submap("vimarchy-swap-" .. first_letter, function()
     for second = 1, #hint_keys do
       local second_letter = hint_keys:sub(second, second)
-      hl.bind(second_letter, hl.dsp.exec_cmd(vimarchy .. "/swap " .. first_letter .. second_letter))
+      local hint = first_letter .. second_letter
+      hl.bind(second_letter, hl.dsp.exec_cmd(vimarchy .. "/swap-press " .. hint))
+      hl.bind(second_letter, hl.dsp.exec_cmd(vimarchy .. "/swap-release " .. hint), { release = true })
     end
     vimarchy_escape_bindings()
   end)
@@ -128,8 +131,15 @@ hyprctl configerrors
   other workspaces. A letter is reused only after its window closes.
 - Supports multiple outputs and fractional scaling.
 - Holding the final key of a hint for 350 ms enters swap mode. The source
-  window tint becomes 50% opaque and lines connect
-  its hint to every available destination; tapping a destination swaps them.
+  window tint becomes 50% opaque and lines connect its hint to every available
+  destination. The source ring draws over the hold interval; when swap mode
+  begins, destination rings and connector lines flash at full opacity before
+  settling to their normal opacity.
+- In swap mode, tapping a destination swaps it with the source. Holding a
+  destination for 350 ms on a `dwindle` workspace reparents the source and
+  destination as sibling tiles. Their side follows the source window's current
+  position relative to the destination. Holding a destination in any other
+  layout does nothing and leaves swap mode active.
 - Quickly repeating a selected hint's final letter focuses it and runs a
   layout-specific double-tap action.
   `dwindle` and `scrolling` toggle a maximized working-area view that keeps the

@@ -13,4 +13,5 @@ rm -f "$state_dir/snapshot.json" "$state_dir/snapshot.json.tmp" \
   "$state_dir/press.json" "$state_dir/press.json.tmp" \
   "$state_dir/double-tap.json" "$state_dir/double-tap.json.tmp" \
   "$state_dir/tap-candidate.json" "$state_dir/tap-candidate.json.tmp" \
-  "$state_dir/double-tap-consumed.json" "$state_dir/double-tap-consumed.json.tmp"
+  "$state_dir/double-tap-consumed.json" "$state_dir/double-tap-consumed.json.tmp" \
+  "$state_dir/swap-press.json" "$state_dir/swap-press.json.tmp"

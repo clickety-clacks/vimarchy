@@ -3,6 +3,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Shapes
 import qs.Commons
 
 Item {
@@ -13,6 +14,9 @@ Item {
   property var windows: []
   property var monitors: []
   property string swapSourceHint: ""
+  property string holdingHint: ""
+  property real holdProgress: 0.0
+  property real connectorVisualOpacity: connectorOpacity
   property string selectedHint: ""
   property real exitOpacity: 1.0
   readonly property bool exiting: selectedHint !== ""
@@ -85,10 +89,15 @@ Item {
     if (snapshotProcess.running) return
     root.settingsOpen = false
     root.swapSourceHint = ""
+    root.holdingHint = ""
+    root.holdProgress = 0.0
+    root.connectorVisualOpacity = root.connectorOpacity
     root.selectedHint = ""
     root.exitOpacity = 1.0
     selectionFade.stop()
     selectionCloseTimer.stop()
+    holdAnimation.stop()
+    connectorFade.stop()
     root.opened = false
     root.loadGeneration++
     if (payloadJson && payloadJson !== "{}") {
@@ -103,12 +112,17 @@ Item {
   function close() {
     selectionFade.stop()
     selectionCloseTimer.stop()
+    holdAnimation.stop()
+    connectorFade.stop()
     root.loadGeneration++
     root.opened = false
     root.settingsOpen = false
     root.windows = []
     root.monitors = []
     root.swapSourceHint = ""
+    root.holdingHint = ""
+    root.holdProgress = 0.0
+    root.connectorVisualOpacity = root.connectorOpacity
     root.selectedHint = ""
     root.exitOpacity = 1.0
   }
@@ -124,6 +138,22 @@ Item {
     root.exitOpacity = 1.0
     selectionFade.restart()
     selectionCloseTimer.restart()
+  }
+
+  function beginHold(hint) {
+    if (!root.opened || !root.windowForHint(String(hint || ""))) return "unknown"
+    root.holdingHint = String(hint)
+    root.holdProgress = 0.0
+    holdAnimation.restart()
+    return "ok"
+  }
+
+  function cancelHold(hint) {
+    if (hint && root.holdingHint !== String(hint)) return "ignored"
+    holdAnimation.stop()
+    root.holdingHint = ""
+    root.holdProgress = 0.0
+    return "ok"
   }
 
   function toggle(payloadJson) {
@@ -169,6 +199,10 @@ Item {
   function enterSwap(hint) {
     if (!root.windowForHint(String(hint || ""))) return "unknown"
     root.swapSourceHint = String(hint)
+    root.holdingHint = ""
+    root.holdProgress = 0.0
+    root.connectorVisualOpacity = 1.0
+    connectorFade.restart()
     return "ok"
   }
 
@@ -214,6 +248,26 @@ Item {
     interval: 150
     repeat: false
     onTriggered: root.saveSettings()
+  }
+
+  NumberAnimation {
+    id: holdAnimation
+    target: root
+    property: "holdProgress"
+    from: 0.0
+    to: 1.0
+    duration: 350
+    easing.type: Easing.Linear
+  }
+
+  NumberAnimation {
+    id: connectorFade
+    target: root
+    property: "connectorVisualOpacity"
+    from: 1.0
+    to: root.connectorOpacity
+    duration: 260
+    easing.type: Easing.OutCubic
   }
 
   SequentialAnimation {
@@ -291,7 +345,7 @@ Item {
           rotation: Math.atan2(deltaY, deltaX) * 180 / Math.PI
           transformOrigin: Item.Center
           color: root.colorForHint(root.swapSourceHint)
-          opacity: root.connectorOpacity * root.exitOpacity
+          opacity: root.connectorVisualOpacity * root.exitOpacity
           antialiasing: true
           z: 1
         }
@@ -342,8 +396,35 @@ Item {
             color: "transparent"
             border.width: Math.max(2, Style.space(2))
             border.color: root.colorForHint(root.swapSourceHint)
-            opacity: root.connectorOpacity
+            opacity: root.holdingHint === windowHint.modelData.hint
+              ? 0 : root.connectorVisualOpacity
             visible: root.swapMode
+          }
+
+          Shape {
+            anchors.centerIn: parent
+            width: windowHint.badgeSize + Style.space(12)
+            height: width
+            visible: root.holdingHint === windowHint.modelData.hint
+            opacity: root.connectorOpacity
+
+            ShapePath {
+              strokeWidth: Math.max(2, Style.space(2))
+              strokeColor: root.swapMode
+                ? root.colorForHint(root.swapSourceHint) : windowHint.accentColor
+              fillColor: "transparent"
+              capStyle: ShapePath.RoundCap
+              startX: (windowHint.badgeSize + Style.space(12)) / 2
+              startY: 0
+              PathAngleArc {
+                centerX: (windowHint.badgeSize + Style.space(12)) / 2
+                centerY: centerX
+                radiusX: centerX - Math.max(2, Style.space(2)) / 2
+                radiusY: radiusX
+                startAngle: -90
+                sweepAngle: 360 * root.holdProgress
+              }
+            }
           }
 
           Rectangle {

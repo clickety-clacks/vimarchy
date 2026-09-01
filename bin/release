@@ -17,6 +17,8 @@ if [[ -f $state_dir/swap-source.json ]]; then
   exit 0
 fi
 
+omarchy-shell shell call vimarchy cancelHold "$hint" >/dev/null 2>&1 || true
+
 # Make the repeat key capturable before snapshot lookup, shell IPC, or focus
 # work. The second-tap handler waits briefly for the validated state below.
 hyprctl dispatch "hl.dsp.submap(\"$repeat_submap\")" >/dev/null

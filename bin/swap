@@ -31,7 +31,8 @@ for _ in {1..100}; do
 done
 
 rm -f "$state_file" "$state_dir/snapshot.json.tmp" "$source_file" \
-  "$state_dir/swap-source.json.tmp" "$state_dir/press.json" "$state_dir/press.json.tmp"
+  "$state_dir/swap-source.json.tmp" "$state_dir/press.json" "$state_dir/press.json.tmp" \
+  "$state_dir/swap-press.json" "$state_dir/swap-press.json.tmp"
 [[ $source_stable =~ ^[0-9a-fA-F]+$ ]] || exit 0
 [[ $target_stable =~ ^[0-9a-fA-F]+$ ]] || exit 0
 [[ $source_stable != "$target_stable" ]] || exit 0

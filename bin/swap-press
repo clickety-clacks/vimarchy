@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+hint=${1:-}
+[[ $hint =~ ^[a-z]{1,2}$ ]] || exit 2
+plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+nonce="$$-$(date +%s%N)"
+printf '{"hint":"%s","nonce":"%s"}\n' "$hint" "$nonce" >"$state_dir/swap-press.json.tmp"
+mv -f "$state_dir/swap-press.json.tmp" "$state_dir/swap-press.json"
+omarchy-shell shell call vimarchy beginHold "$hint" >/dev/null 2>&1 || true
+setsid -f "$plugin_dir/bin/swap-hold-after-delay" "$hint" "$nonce"
