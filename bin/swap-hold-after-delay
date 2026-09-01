@@ -5,8 +5,10 @@ nonce=${2:-}
 [[ $hint =~ ^[a-z]{1,2}$ && -n $nonce ]] || exit 2
 state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
 press_file=$state_dir/swap-press.json
+claimed_file=$state_dir/swap-hold-claimed.json
 sleep 0.35
 [[ -f $press_file ]] || exit 0
 jq -e --arg hint "$hint" --arg nonce "$nonce" '.hint == $hint and .nonce == $nonce' "$press_file" >/dev/null || exit 0
+mv -f "$press_file" "$claimed_file"
 "$(dirname -- "${BASH_SOURCE[0]}")/hold-target" "$hint"
-rm -f "$press_file" "$state_dir/swap-press.json.tmp"
+rm -f "$claimed_file" "$state_dir/swap-press.json.tmp"

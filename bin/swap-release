@@ -4,6 +4,9 @@ hint=${1:-}
 [[ $hint =~ ^[a-z]{1,2}$ ]] || exit 2
 state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
 press_file=$state_dir/swap-press.json
+# Once the hold worker claims the press file, key-up belongs to that hold and
+# must not race it by falling through to the tap/swap action.
+[[ -f $press_file ]] || exit 0
 pending=$(jq -r '.hint // ""' "$press_file" 2>/dev/null || true)
 [[ $pending == "$hint" ]] || exit 0
 rm -f "$press_file" "$state_dir/swap-press.json.tmp"

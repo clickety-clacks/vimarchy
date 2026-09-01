@@ -25,7 +25,8 @@ rm -f "$state_dir/swap-source.json" "$state_dir/swap-source.json.tmp" \
   "$state_dir/double-tap.json" "$state_dir/double-tap.json.tmp" \
   "$state_dir/tap-candidate.json" "$state_dir/tap-candidate.json.tmp" \
   "$state_dir/double-tap-consumed.json" "$state_dir/double-tap-consumed.json.tmp" \
-  "$state_dir/swap-press.json" "$state_dir/swap-press.json.tmp"
+  "$state_dir/swap-press.json" "$state_dir/swap-press.json.tmp" \
+  "$state_dir/swap-hold-claimed.json"
 
 # Collapse key repeat or two near-simultaneous launches into one transaction.
 exec 9>"$state_dir/open.lock"
