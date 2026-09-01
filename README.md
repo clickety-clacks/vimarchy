@@ -151,7 +151,9 @@ hyprctl configerrors
 - Uses one-letter hints for up to 26 windows. Above that, all hints become
   unambiguous two-letter sequences such as `aa`, `as`, and `ad`.
 - Remembers assignments by Hyprland stable window ID, including windows on
-  other workspaces. A letter is reused only after its window closes.
+  other workspaces, and retains them whenever they do not collide among the
+  windows currently visible. The one- versus two-letter threshold is based
+  only on visible windows.
 - Supports multiple outputs and fractional scaling.
 - Holding the final key of a hint for 350 ms enters move mode. The source
   window tint becomes 50% opaque and lines connect its hint to every available
