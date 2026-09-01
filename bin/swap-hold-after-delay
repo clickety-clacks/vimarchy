@@ -8,5 +8,5 @@ press_file=$state_dir/swap-press.json
 sleep 0.35
 [[ -f $press_file ]] || exit 0
 jq -e --arg hint "$hint" --arg nonce "$nonce" '.hint == $hint and .nonce == $nonce' "$press_file" >/dev/null || exit 0
-"$(dirname -- "${BASH_SOURCE[0]}")/pair" "$hint"
+"$(dirname -- "${BASH_SOURCE[0]}")/hold-target" "$hint"
 rm -f "$press_file" "$state_dir/swap-press.json.tmp"

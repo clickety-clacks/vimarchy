@@ -21,6 +21,7 @@ target_address=$(jq -r .address <<<"$target")
 source_workspace=$(jq -r '.workspace.id' <<<"$source")
 target_workspace=$(jq -r '.workspace.id' <<<"$target")
 [[ $source_workspace == "$target_workspace" ]] || exit 0
+mapfile -t source_members < <(jq -r 'if ((.grouped // []) | length) > 0 then .grouped[] else .address end' <<<"$source")
 layout=$(hyprctl -j workspaces | jq -r --argjson id "$target_workspace" '.[] | select(.id == $id) | .tiledLayout')
 if [[ $layout != dwindle ]]; then
   omarchy-shell shell call vimarchy cancelHold "$hint" >/dev/null 2>&1 || true
@@ -31,9 +32,44 @@ read -r tx ty < <(jq -r '[.at[0] + .size[0]/2, .at[1] + .size[1]/2] | @tsv' <<<"
 direction=$(awk -v sx="$sx" -v sy="$sy" -v tx="$tx" -v ty="$ty" 'BEGIN { dx=sx-tx; dy=sy-ty; if (dx*dx >= dy*dy) print dx < 0 ? "l" : "r"; else print dy < 0 ? "u" : "d" }')
 hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
 omarchy-shell shell hide vimarchy >/dev/null 2>&1 || true
+for address in "$source_address" "$target_address"; do
+  hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"maximized\", action = \"unset\", layout_aware = false, window = \"address:$address\" })" >/dev/null
+  hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"fullscreen\", action = \"unset\", window = \"address:$address\" })" >/dev/null
+done
 hyprctl dispatch "hl.dsp.window.float({ action = \"set\", window = \"address:$source_address\" })" >/dev/null
 hyprctl dispatch "hl.dsp.focus({ window = \"address:$target_address\" })" >/dev/null
 hyprctl dispatch "hl.dsp.layout(\"preselect $direction\")" >/dev/null
 hyprctl dispatch "hl.dsp.window.float({ action = \"unset\", window = \"address:$source_address\" })" >/dev/null
+if (( ${#source_members[@]} > 1 )); then
+  source_group_count=$(hyprctl -j clients | jq -r --arg stable "$source_stable" '.[] | select(.stableId == $stable) | (.grouped // [] | length)')
+  if [[ ${source_group_count:-0} == 0 ]]; then
+    hyprctl dispatch "hl.dsp.group.toggle({ window = \"address:$source_address\" })" >/dev/null
+  fi
+fi
+
+move_member_into_source_group() {
+  local member_address=$1
+  local current member current_source mx my sx sy member_direction source_direction
+
+  current=$(hyprctl -j clients)
+  member=$(jq -c --arg address "$member_address" '.[] | select(.address == $address)' <<<"$current" | head -n1)
+  current_source=$(jq -c --arg stable "$source_stable" '.[] | select(.stableId == $stable)' <<<"$current" | head -n1)
+  [[ -n $member && -n $current_source ]] || return 0
+
+  read -r mx my < <(jq -r '[.at[0] + .size[0]/2, .at[1] + .size[1]/2] | @tsv' <<<"$member")
+  read -r sx sy < <(jq -r '[.at[0] + .size[0]/2, .at[1] + .size[1]/2] | @tsv' <<<"$current_source")
+  member_direction=$(awk -v mx="$mx" -v my="$my" -v sx="$sx" -v sy="$sy" 'BEGIN { dx=mx-sx; dy=my-sy; if (dx*dx >= dy*dy) print dx < 0 ? "l" : "r"; else print dy < 0 ? "u" : "d" }')
+  case "$member_direction" in l) source_direction=r ;; r) source_direction=l ;; u) source_direction=d ;; d) source_direction=u ;; esac
+
+  hyprctl dispatch "hl.dsp.window.float({ action = \"set\", window = \"address:$member_address\" })" >/dev/null
+  hyprctl dispatch "hl.dsp.focus({ window = \"address:$source_address\" })" >/dev/null
+  hyprctl dispatch "hl.dsp.layout(\"preselect $member_direction\")" >/dev/null
+  hyprctl dispatch "hl.dsp.window.float({ action = \"unset\", window = \"address:$member_address\" })" >/dev/null
+  hyprctl dispatch "hl.dsp.window.move({ window = \"address:$member_address\", into_group = \"$source_direction\" })" >/dev/null
+}
+
+for member_address in "${source_members[@]}"; do
+  [[ $member_address == "$source_address" ]] || move_member_into_source_group "$member_address"
+done
 hyprctl dispatch "hl.dsp.focus({ window = \"address:$source_address\" })" >/dev/null
 rm -f "$state_file" "$source_file" "$state_dir/swap-press.json" "$state_dir/swap-press.json.tmp"

@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+hint=${1:-}
+[[ $hint =~ ^[a-z]{1,2}$ ]] || exit 2
+
+plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+state_file=$state_dir/snapshot.json
+source_file=$state_dir/swap-source.json
+settings_file=${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/vimarchy.json
+[[ -f $state_file && -f $source_file ]] || exit 0
+
+source_stable=$(jq -r '.stableId // ""' "$source_file")
+source_hint=$(jq -r '.hint // ""' "$source_file")
+target_stable=$(jq -r --arg hint "$hint" '.windows[] | select(.hint == $hint) | .stableId' "$state_file" | head -n1)
+if [[ ! $source_stable =~ ^[0-9a-fA-F]+$ || ! $target_stable =~ ^[0-9a-fA-F]+$ || $source_stable == "$target_stable" ]]; then
+  omarchy-shell shell call vimarchy cancelHold "$hint" >/dev/null 2>&1 || true
+  exit 0
+fi
+
+clients=$(hyprctl -j clients)
+source=$(jq -c --arg stable "$source_stable" '.[] | select(.stableId == $stable)' <<<"$clients" | head -n1)
+target=$(jq -c --arg stable "$target_stable" '.[] | select(.stableId == $stable)' <<<"$clients" | head -n1)
+[[ -n $source && -n $target ]] || exit 0
+
+source_address=$(jq -r .address <<<"$source")
+target_address=$(jq -r .address <<<"$target")
+source_workspace=$(jq -r '.workspace.id' <<<"$source")
+target_workspace=$(jq -r '.workspace.id' <<<"$target")
+[[ $source_workspace == "$target_workspace" ]] || exit 0
+
+layout=$(hyprctl -j workspaces | jq -r --argjson id "$target_workspace" '.[] | select(.id == $id) | .tiledLayout // ""')
+[[ -n $layout ]] || exit 0
+
+action=""
+if [[ -f $settings_file ]]; then
+  action=$(jq -c --arg layout "$layout" '.holdTarget.layouts[$layout] // .holdTarget.layouts["*"] // empty' "$settings_file" 2>/dev/null || true)
+fi
+
+run_builtin() {
+  case "$1" in
+    pair) exec "$plugin_dir/bin/pair" "$hint" ;;
+    group) exec "$plugin_dir/bin/group" "$hint" ;;
+    disabled) omarchy-shell shell call vimarchy cancelHold "$hint" >/dev/null 2>&1 || true ;;
+    *) return 2 ;;
+  esac
+}
+
+if [[ -z $action ]]; then
+  if [[ $layout == dwindle ]]; then run_builtin pair; else run_builtin disabled; fi
+  exit 0
+fi
+
+if [[ $(jq -r 'type' <<<"$action") == string ]]; then
+  run_builtin "$(jq -r . <<<"$action")"
+  exit
+fi
+
+if [[ $(jq -r 'type' <<<"$action") == array ]]; then
+  mapfile -t command < <(jq -r '.[] | select(type == "string")' <<<"$action")
+elif [[ $(jq -r 'type' <<<"$action") == object ]]; then
+  mapfile -t command < <(jq -r '.command[]? | select(type == "string")' <<<"$action")
+else
+  exit 0
+fi
+(( ${#command[@]} > 0 )) || exit 0
+
+hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+omarchy-shell shell hide vimarchy >/dev/null 2>&1 || true
+rm -f "$state_file" "$source_file" "$state_dir/swap-press.json" "$state_dir/swap-press.json.tmp"
+
+VIMARCHY_LAYOUT=$layout \
+VIMARCHY_SOURCE_ADDRESS=$source_address \
+VIMARCHY_SOURCE_STABLE_ID=$source_stable \
+VIMARCHY_TARGET_ADDRESS=$target_address \
+VIMARCHY_TARGET_STABLE_ID=$target_stable \
+VIMARCHY_WORKSPACE_ID=$target_workspace \
+VIMARCHY_SOURCE_HINT=$source_hint \
+VIMARCHY_TARGET_HINT=$hint \
+  "${command[@]}"

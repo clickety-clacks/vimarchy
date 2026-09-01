@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+hint=${1:-}
+[[ $hint =~ ^[a-z]{1,2}$ ]] || exit 2
+
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+state_file=$state_dir/snapshot.json
+source_file=$state_dir/swap-source.json
+[[ -f $state_file && -f $source_file ]] || exit 0
+
+source_stable=$(jq -r '.stableId // ""' "$source_file")
+target_stable=$(jq -r --arg hint "$hint" '.windows[] | select(.hint == $hint) | .stableId' "$state_file" | head -n1)
+if [[ ! $source_stable =~ ^[0-9a-fA-F]+$ || ! $target_stable =~ ^[0-9a-fA-F]+$ || $source_stable == "$target_stable" ]]; then
+  omarchy-shell shell call vimarchy cancelHold "$hint" >/dev/null 2>&1 || true
+  exit 0
+fi
+
+clients=$(hyprctl -j clients)
+source=$(jq -c --arg stable "$source_stable" '.[] | select(.stableId == $stable)' <<<"$clients" | head -n1)
+target=$(jq -c --arg stable "$target_stable" '.[] | select(.stableId == $stable)' <<<"$clients" | head -n1)
+[[ -n $source && -n $target ]] || exit 0
+
+source_address=$(jq -r .address <<<"$source")
+target_address=$(jq -r .address <<<"$target")
+source_workspace=$(jq -r '.workspace.id' <<<"$source")
+target_workspace=$(jq -r '.workspace.id' <<<"$target")
+[[ $source_workspace == "$target_workspace" ]] || exit 0
+
+if jq -e --arg target "$target_address" '(.grouped // []) | index($target) != null' <<<"$source" >/dev/null; then
+  omarchy-shell shell call vimarchy cancelHold "$hint" >/dev/null 2>&1 || true
+  exit 0
+fi
+
+mapfile -t source_members < <(jq -r 'if ((.grouped // []) | length) > 0 then .grouped[] else .address end' <<<"$source")
+
+move_member_into_target() {
+  local member_address=$1
+  local current member current_target sx sy tx ty direction target_direction
+
+  current=$(hyprctl -j clients)
+  member=$(jq -c --arg address "$member_address" '.[] | select(.address == $address)' <<<"$current" | head -n1)
+  current_target=$(jq -c --arg stable "$target_stable" '.[] | select(.stableId == $stable)' <<<"$current" | head -n1)
+  [[ -n $member && -n $current_target ]] || return 0
+
+  if jq -e --arg target "$(jq -r .address <<<"$current_target")" '(.grouped // []) | index($target) != null' <<<"$member" >/dev/null; then
+    return 0
+  fi
+
+  read -r sx sy < <(jq -r '[.at[0] + .size[0]/2, .at[1] + .size[1]/2] | @tsv' <<<"$member")
+  read -r tx ty < <(jq -r '[.at[0] + .size[0]/2, .at[1] + .size[1]/2] | @tsv' <<<"$current_target")
+  direction=$(awk -v sx="$sx" -v sy="$sy" -v tx="$tx" -v ty="$ty" 'BEGIN { dx=sx-tx; dy=sy-ty; if (dx*dx >= dy*dy) print dx < 0 ? "l" : "r"; else print dy < 0 ? "u" : "d" }')
+  case "$direction" in l) target_direction=r ;; r) target_direction=l ;; u) target_direction=d ;; d) target_direction=u ;; esac
+
+  hyprctl dispatch "hl.dsp.window.float({ action = \"set\", window = \"address:$member_address\" })" >/dev/null
+  hyprctl dispatch "hl.dsp.focus({ window = \"address:$target_address\" })" >/dev/null
+  hyprctl dispatch "hl.dsp.layout(\"preselect $direction\")" >/dev/null
+  hyprctl dispatch "hl.dsp.window.float({ action = \"unset\", window = \"address:$member_address\" })" >/dev/null
+  hyprctl dispatch "hl.dsp.window.move({ window = \"address:$member_address\", into_or_create_group = \"$target_direction\" })" >/dev/null
+}
+
+hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+omarchy-shell shell hide vimarchy >/dev/null 2>&1 || true
+for address in "$source_address" "$target_address"; do
+  hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"maximized\", action = \"unset\", layout_aware = false, window = \"address:$address\" })" >/dev/null
+  hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"fullscreen\", action = \"unset\", window = \"address:$address\" })" >/dev/null
+done
+move_member_into_target "$source_address"
+for member_address in "${source_members[@]}"; do
+  [[ $member_address == "$source_address" ]] || move_member_into_target "$member_address"
+done
+hyprctl dispatch "hl.dsp.focus({ window = \"address:$source_address\" })" >/dev/null
+rm -f "$state_file" "$source_file" "$state_dir/swap-press.json" "$state_dir/swap-press.json.tmp"

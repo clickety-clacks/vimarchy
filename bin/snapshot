@@ -18,11 +18,22 @@ jq -s '
       specialWorkspace
     })) as $monitors
   | .[1] as $clients
-  | {
+  | ($clients
+      | map(select((.address // "") != "" and (.stableId // "") != ""))
+      | map({ key: .address, value: .stableId })
+      | from_entries) as $stable_by_address
+  | def hint_id:
+      if ((.grouped // []) | length) > 0 then
+        "group:" + ([.grouped[] | $stable_by_address[.] // empty] | sort | join("+"))
+      else .stableId
+      end;
+  {
       monitors: $monitors,
       liveWindowIds: ($clients
         | map(select(.mapped == true and (.stableId // "") != ""))
-        | map(.stableId)),
+        | map([hint_id, .stableId])
+        | flatten
+        | unique),
       windows: (
         $clients
         | map(select(.mapped == true and .hidden == false))
@@ -33,6 +44,9 @@ jq -s '
                     .activeWorkspace.id == $workspace
                     or (.specialWorkspace.id != 0 and .specialWorkspace.id == $workspace)))
           ))
+        | map(. + { hintId: hint_id })
+        | group_by(.hintId)
+        | map(sort_by(.focusHistoryID) | .[0])
         | map(. as $client
             | (($client.at[0] + ($client.size[0] / 2)) | floor) as $center_x
             | (($client.at[1] + ($client.size[1] / 2)) | floor) as $center_y
@@ -45,6 +59,7 @@ jq -s '
             | {
                 address,
                 stableId,
+                hintId,
                 at,
                 size,
                 class,

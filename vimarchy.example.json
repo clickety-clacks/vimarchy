@@ -1,6 +1,13 @@
 {
   "windowTintOpacity": 0.07,
   "badgeTintOpacity": 0.21,
+  "holdTarget": {
+    "layouts": {
+      "dwindle": "pair",
+      "scrolling": "disabled",
+      "master": "disabled"
+    }
+  },
   "doubleTap": {
     "timeoutMs": 280,
     "layouts": {

@@ -18,7 +18,7 @@ rm -f "$state_dir/tap-candidate.json" "$state_dir/tap-candidate.json.tmp"
 [[ ! -f $source_file ]] || exit 0
 
 source_json=$(jq -c --arg hint "$hint" \
-  '.windows[] | select(.hint == $hint) | {hint, stableId}' "$state_file" | head -n 1)
+  '.windows[] | select(.hint == $hint) | {hint, stableId, hintId}' "$state_file" | head -n 1)
 [[ -n $source_json ]] || exit 0
 
 printf '%s\n' "$source_json" >"$source_tmp"

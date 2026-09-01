@@ -7,7 +7,7 @@
 Vimium-style window management UI for Omarchy.
 
 Press a shortcut, see a large hint over every visible window, then use the
-hints to focus, swap, or pair windows directly through Hyprland.
+hints to focus, swap, pair, or group windows directly through Hyprland.
 
 ## Moves
 
@@ -16,17 +16,17 @@ hints to focus, swap, or pair windows directly through Hyprland.
 | Tap a hint | **Focus** | Focus that window. |
 | Double-tap a hint | **Focus action** | Run the action configured for the current layout. By default, `dwindle` and `scrolling` toggle a full working-area view, while `master` promotes the window to master. |
 | Hold a hint, then tap another | **Swap** | Exchange the two windows' tiled positions. |
-| Hold a hint, then hold another | **Pair** | In `dwindle`, make the two windows sibling tiles in the split tree. |
+| Hold a hint, then hold another | **Hold action** | Run the configured layout action. By default, `dwindle` makes the windows sibling tiles. |
 | `Escape` | **Cancel** | Dismiss Vimarchy without moving a window. |
 
-Some examples:
+Some examples with the defaults:
 
 - **Hold `A`, tap `S`** to swap windows `A` and `S`.
 - **Hold `A`, hold `S`** to pair windows `A` and `S` in `dwindle`.
 
-Pair currently works only in `dwindle` and creates sibling tiles, not a tabbed
-window group. Holding a destination in another layout leaves move mode open so
-you can still swap or cancel.
+By default, pair works only in `dwindle` and creates sibling tiles. The
+hold-target action is configurable, including a built-in action that creates
+Hyprland tab groups.
 
 ## Install
 
@@ -141,6 +141,8 @@ hyprctl configerrors
 - Opens settings from the active hint map with `Super+,`.
 - Tries to keep the same letter assigned to a window for better referential
   stability.
+- Shows one hint for an existing Hyprland tab group and treats the group as one
+  window. The hint follows whichever tab is active.
 - Holding a hint for 350 ms enters move mode.
 - In move mode, tapping a destination swaps it with the source. Holding a
   destination for 350 ms on a `dwindle` workspace reparents the source and
@@ -152,6 +154,38 @@ hyprctl configerrors
   bar visible; `master` promotes the window and does nothing if it is already
   master.
 - Press Escape to cancel.
+
+## Hold-target actions
+
+Vimarchy reads optional hold-target configuration from
+`~/.config/omarchy/vimarchy.json`. Omitted layouts retain the default behavior:
+`dwindle` pairs sibling tiles, while other layouts leave move mode open.
+
+```json
+{
+  "holdTarget": {
+    "layouts": {
+      "dwindle": "pair",
+      "scrolling": "group",
+      "master": "disabled",
+      "custom-layout": {
+        "command": ["my-window-action"]
+      }
+    }
+  }
+}
+```
+
+Built-ins are `pair`, `group`, and `disabled`. `pair` creates sibling tiles
+and is supported by `dwindle`; `group` combines the complete source
+window/group with the target as one Hyprland tab group; `disabled` leaves move
+mode open. A `"*"` layout entry can provide a fallback.
+
+Callback commands run without an implicit shell and receive
+`VIMARCHY_LAYOUT`, `VIMARCHY_SOURCE_ADDRESS`,
+`VIMARCHY_SOURCE_STABLE_ID`, `VIMARCHY_SOURCE_HINT`,
+`VIMARCHY_TARGET_ADDRESS`, `VIMARCHY_TARGET_STABLE_ID`,
+`VIMARCHY_TARGET_HINT`, and `VIMARCHY_WORKSPACE_ID`.
 
 ## Double-tap actions
 
