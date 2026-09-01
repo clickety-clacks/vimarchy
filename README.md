@@ -19,9 +19,10 @@ hints to focus, swap, or pair windows directly through Hyprland.
 | Hold a hint, then hold another | **Pair** | In `dwindle`, make the two windows sibling tiles in the split tree. |
 | `Escape` | **Cancel** | Dismiss Vimarchy without moving a window. |
 
-The first held hint is the source. Its progress ring completes over 350 ms,
-then Vimarchy enters move mode and shows every available destination. From
-there:
+The first held hint is the source. To keep ordinary taps visually clean, its
+progress ring waits through a 100 ms grace period, then draws over 250 ms.
+Move mode begins at the same 350 ms hold threshold and shows every available
+destination. From there:
 
 - **Hold `A`, tap `S`** to swap windows `A` and `S`.
 - **Hold `A`, hold `S`** to pair windows `A` and `S` in `dwindle`.
@@ -154,9 +155,9 @@ hyprctl configerrors
 - Supports multiple outputs and fractional scaling.
 - Holding the final key of a hint for 350 ms enters move mode. The source
   window tint becomes 50% opaque and lines connect its hint to every available
-  destination. The source ring draws over the hold interval; when move mode
-  begins, destination rings and connector lines flash at full opacity before
-  settling to their normal opacity.
+  destination. After a 100 ms visual grace period, the source ring draws over
+  the remaining 250 ms; when move mode begins, destination rings and connector
+  lines flash at full opacity before settling to their normal opacity.
 - In move mode, tapping a destination swaps it with the source. Holding a
   destination for 350 ms on a `dwindle` workspace reparents the source and
   destination as sibling tiles. Their side follows the source window's current

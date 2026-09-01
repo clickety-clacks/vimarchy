@@ -250,14 +250,21 @@ Item {
     onTriggered: root.saveSettings()
   }
 
-  NumberAnimation {
+  SequentialAnimation {
     id: holdAnimation
-    target: root
-    property: "holdProgress"
-    from: 0.0
-    to: 1.0
-    duration: 350
-    easing.type: Easing.Linear
+
+    PauseAnimation {
+      duration: 100
+    }
+
+    NumberAnimation {
+      target: root
+      property: "holdProgress"
+      from: 0.0
+      to: 1.0
+      duration: 250
+      easing.type: Easing.Linear
+    }
   }
 
   NumberAnimation {
