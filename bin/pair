@@ -37,9 +37,18 @@ for address in "$source_address" "$target_address"; do
   hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"fullscreen\", action = \"unset\", window = \"address:$address\" })" >/dev/null
 done
 hyprctl dispatch "hl.dsp.window.float({ action = \"set\", window = \"address:$source_address\" })" >/dev/null
+for _ in {1..20}; do
+  [[ $(hyprctl -j clients | jq -r --arg address "$source_address" '.[] | select(.address == $address) | .floating') == true ]] && break
+  sleep 0.005
+done
 hyprctl dispatch "hl.dsp.focus({ window = \"address:$target_address\" })" >/dev/null
 hyprctl dispatch "hl.dsp.layout(\"preselect $direction\")" >/dev/null
 hyprctl dispatch "hl.dsp.window.float({ action = \"unset\", window = \"address:$source_address\" })" >/dev/null
+for _ in {1..20}; do
+  [[ $(hyprctl -j clients | jq -r --arg address "$source_address" '.[] | select(.address == $address) | .floating') == false ]] && break
+  sleep 0.005
+done
+sleep 0.02
 if (( ${#source_members[@]} > 1 )); then
   source_group_count=$(hyprctl -j clients | jq -r --arg stable "$source_stable" '.[] | select(.stableId == $stable) | (.grouped // [] | length)')
   if [[ ${source_group_count:-0} == 0 ]]; then
@@ -62,9 +71,18 @@ move_member_into_source_group() {
   case "$member_direction" in l) source_direction=r ;; r) source_direction=l ;; u) source_direction=d ;; d) source_direction=u ;; esac
 
   hyprctl dispatch "hl.dsp.window.float({ action = \"set\", window = \"address:$member_address\" })" >/dev/null
+  for _ in {1..20}; do
+    [[ $(hyprctl -j clients | jq -r --arg address "$member_address" '.[] | select(.address == $address) | .floating') == true ]] && break
+    sleep 0.005
+  done
   hyprctl dispatch "hl.dsp.focus({ window = \"address:$source_address\" })" >/dev/null
   hyprctl dispatch "hl.dsp.layout(\"preselect $member_direction\")" >/dev/null
   hyprctl dispatch "hl.dsp.window.float({ action = \"unset\", window = \"address:$member_address\" })" >/dev/null
+  for _ in {1..20}; do
+    [[ $(hyprctl -j clients | jq -r --arg address "$member_address" '.[] | select(.address == $address) | .floating') == false ]] && break
+    sleep 0.005
+  done
+  sleep 0.02
   hyprctl dispatch "hl.dsp.window.move({ window = \"address:$member_address\", into_group = \"$source_direction\" })" >/dev/null
 }
 

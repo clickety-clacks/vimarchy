@@ -54,10 +54,27 @@ move_member_into_target() {
   case "$direction" in l) target_direction=r ;; r) target_direction=l ;; u) target_direction=d ;; d) target_direction=u ;; esac
 
   hyprctl dispatch "hl.dsp.window.float({ action = \"set\", window = \"address:$member_address\" })" >/dev/null
+  for _ in {1..20}; do
+    [[ $(hyprctl -j clients | jq -r --arg address "$member_address" '.[] | select(.address == $address) | .floating') == true ]] && break
+    sleep 0.005
+  done
   hyprctl dispatch "hl.dsp.focus({ window = \"address:$target_address\" })" >/dev/null
-  hyprctl dispatch "hl.dsp.layout(\"preselect $direction\")" >/dev/null
+  hyprctl dispatch "hl.dsp.layout(\"preselect $direction\")" >/dev/null 2>&1 || true
   hyprctl dispatch "hl.dsp.window.float({ action = \"unset\", window = \"address:$member_address\" })" >/dev/null
-  hyprctl dispatch "hl.dsp.window.move({ window = \"address:$member_address\", into_or_create_group = \"$target_direction\" })" >/dev/null
+  for _ in {1..20}; do
+    [[ $(hyprctl -j clients | jq -r --arg address "$member_address" '.[] | select(.address == $address) | .floating') == false ]] && break
+    sleep 0.005
+  done
+  sleep 0.02
+  current=$(hyprctl -j clients)
+  member=$(jq -c --arg address "$member_address" '.[] | select(.address == $address)' <<<"$current" | head -n1)
+  current_target=$(jq -c --arg stable "$target_stable" '.[] | select(.stableId == $stable)' <<<"$current" | head -n1)
+  [[ -n $member && -n $current_target ]] || return 0
+  read -r sx sy < <(jq -r '[.at[0] + .size[0]/2, .at[1] + .size[1]/2] | @tsv' <<<"$member")
+  read -r tx ty < <(jq -r '[.at[0] + .size[0]/2, .at[1] + .size[1]/2] | @tsv' <<<"$current_target")
+  direction=$(awk -v sx="$sx" -v sy="$sy" -v tx="$tx" -v ty="$ty" 'BEGIN { dx=sx-tx; dy=sy-ty; if (dx*dx >= dy*dy) print dx < 0 ? "l" : "r"; else print dy < 0 ? "u" : "d" }')
+  case "$direction" in l) target_direction=r ;; r) target_direction=l ;; u) target_direction=d ;; d) target_direction=u ;; esac
+  hyprctl dispatch "hl.dsp.window.move({ window = \"address:$member_address\", into_group = \"$target_direction\" })" >/dev/null
 }
 
 hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
@@ -66,6 +83,15 @@ for address in "$source_address" "$target_address"; do
   hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"maximized\", action = \"unset\", layout_aware = false, window = \"address:$address\" })" >/dev/null
   hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"fullscreen\", action = \"unset\", window = \"address:$address\" })" >/dev/null
 done
+target_group_count=$(hyprctl -j clients | jq -r --arg stable "$target_stable" '.[] | select(.stableId == $stable) | (.grouped // [] | length)')
+if [[ ${target_group_count:-0} == 0 ]]; then
+  hyprctl dispatch "hl.dsp.group.toggle({ window = \"address:$target_address\" })" >/dev/null
+  for _ in {1..20}; do
+    target_group_count=$(hyprctl -j clients | jq -r --arg stable "$target_stable" '.[] | select(.stableId == $stable) | (.grouped // [] | length)')
+    (( ${target_group_count:-0} > 0 )) && break
+    sleep 0.005
+  done
+fi
 move_member_into_target "$source_address"
 for member_address in "${source_members[@]}"; do
   [[ $member_address == "$source_address" ]] || move_member_into_target "$member_address"
