@@ -204,5 +204,4 @@ close, even if the plugin is broken or missing.
 
 ## Status
 
-Early spike. The core behavior works, but visual and multi-output edge cases
-still need broader testing.
+Beta quality.
