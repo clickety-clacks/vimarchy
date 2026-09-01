@@ -6,9 +6,31 @@
 
 Vimium-style window management UI for Omarchy.
 
-Press a shortcut, see a large hint over every visible window, then tap a hint
-to focus it. Hold a hint to choose a swap source, then tap another hint to
-exchange those two windows directly through Hyprland.
+Press a shortcut, see a large hint over every visible window, then use the
+hints to focus, swap, or pair windows directly through Hyprland.
+
+## Moves
+
+| Gesture | Move | Result |
+| --- | --- | --- |
+| Tap a hint | **Focus** | Focus that window. |
+| Double-tap a hint | **Focus action** | Run the action configured for the current layout. By default, `dwindle` and `scrolling` toggle a full working-area view, while `master` promotes the window to master. |
+| Hold a hint, then tap another | **Swap** | Exchange the two windows' tiled positions. |
+| Hold a hint, then hold another | **Pair** | In `dwindle`, make the two windows sibling tiles in the split tree. |
+| `Escape` | **Cancel** | Dismiss Vimarchy without moving a window. |
+
+The first held hint is the source. Its progress ring completes over 350 ms,
+then Vimarchy enters move mode and shows every available destination. From
+there:
+
+- **Hold `A`, tap `S`** to swap windows `A` and `S`.
+- **Hold `A`, hold `S`** to pair windows `A` and `S` in `dwindle`.
+
+Pairing is not a Hyprland tabbed window group. It makes the two windows sibling
+leaves in the `dwindle` layout tree, placing the source on the side it already
+occupies relative to the destination. Pair is deliberately unavailable in
+other layouts; holding a destination there leaves move mode open so you can
+still tap a destination to swap or press `Escape` to cancel.
 
 ## Install
 
@@ -130,12 +152,12 @@ hyprctl configerrors
 - Remembers assignments by Hyprland stable window ID, including windows on
   other workspaces. A letter is reused only after its window closes.
 - Supports multiple outputs and fractional scaling.
-- Holding the final key of a hint for 350 ms enters swap mode. The source
+- Holding the final key of a hint for 350 ms enters move mode. The source
   window tint becomes 50% opaque and lines connect its hint to every available
-  destination. The source ring draws over the hold interval; when swap mode
+  destination. The source ring draws over the hold interval; when move mode
   begins, destination rings and connector lines flash at full opacity before
   settling to their normal opacity.
-- In swap mode, tapping a destination swaps it with the source. Holding a
+- In move mode, tapping a destination swaps it with the source. Holding a
   destination for 350 ms on a `dwindle` workspace reparents the source and
   destination as sibling tiles. Their side follows the source window's current
   position relative to the destination. Holding a destination in any other
@@ -146,7 +168,7 @@ hyprctl configerrors
   bar visible; `master` promotes the window and does nothing if it is already
   master. Recognition happens on the second key-down, so no pause is required
   between releasing the first tap and pressing the second.
-- Swap mode resolves both stable IDs again immediately before the operation,
+- Move mode resolves both stable IDs again immediately before the operation,
   so a closed or replaced client cannot redirect the action.
 - Press Escape to cancel.
 
