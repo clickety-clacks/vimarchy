@@ -19,19 +19,14 @@ hints to focus, swap, or pair windows directly through Hyprland.
 | Hold a hint, then hold another | **Pair** | In `dwindle`, make the two windows sibling tiles in the split tree. |
 | `Escape` | **Cancel** | Dismiss Vimarchy without moving a window. |
 
-The first held hint is the source. To keep ordinary taps visually clean, its
-progress ring waits through a 100 ms grace period, then draws over 250 ms.
-Move mode begins at the same 350 ms hold threshold and shows every available
-destination. From there:
+Some examples:
 
 - **Hold `A`, tap `S`** to swap windows `A` and `S`.
 - **Hold `A`, hold `S`** to pair windows `A` and `S` in `dwindle`.
 
-Pairing is not a Hyprland tabbed window group. It makes the two windows sibling
-leaves in the `dwindle` layout tree, placing the source on the side it already
-occupies relative to the destination. Pair is deliberately unavailable in
-other layouts; holding a destination there leaves move mode open so you can
-still tap a destination to swap or press `Escape` to cancel.
+Pair currently works only in `dwindle` and creates sibling tiles, not a tabbed
+window group. Holding a destination in another layout leaves move mode open so
+you can still swap or cancel.
 
 ## Install
 
@@ -142,37 +137,20 @@ hyprctl configerrors
 
 ## Behavior
 
-- Shows only mapped windows on the workspaces currently visible across outputs.
-- Includes visible special-workspace and pinned windows.
 - Prioritizes home-row letters: `a s d f g h j k l`, then the remaining letters.
 - Opens settings from the active hint map with `Super+,`.
-- Keeps the window hints visible behind the settings card as a live opacity
-  preview; `Escape`, `Alt+Space`, or `Done` closes both.
-- Uses one-letter hints for up to 26 windows. Above that, all hints become
-  unambiguous two-letter sequences such as `aa`, `as`, and `ad`.
-- Remembers assignments by Hyprland stable window ID, including windows on
-  other workspaces, and retains them whenever they do not collide among the
-  windows currently visible. The one- versus two-letter threshold is based
-  only on visible windows.
-- Supports multiple outputs and fractional scaling.
-- Holding the final key of a hint for 350 ms enters move mode. The source
-  window tint becomes 50% opaque and lines connect its hint to every available
-  destination. After a 100 ms visual grace period, the source ring draws over
-  the remaining 250 ms; when move mode begins, destination rings and connector
-  lines flash at full opacity before settling to their normal opacity.
+- Tries to keep the same letter assigned to a window for better referential
+  stability.
+- Holding a hint for 350 ms enters move mode.
 - In move mode, tapping a destination swaps it with the source. Holding a
   destination for 350 ms on a `dwindle` workspace reparents the source and
   destination as sibling tiles. Their side follows the source window's current
   position relative to the destination. Holding a destination in any other
-  layout does nothing and leaves swap mode active.
-- Quickly repeating a selected hint's final letter focuses it and runs a
-  layout-specific double-tap action.
+  layout does nothing and leaves move mode active.
+- Double-tapping a hint focuses it and runs a layout-specific action.
   `dwindle` and `scrolling` toggle a maximized working-area view that keeps the
   bar visible; `master` promotes the window and does nothing if it is already
-  master. Recognition happens on the second key-down, so no pause is required
-  between releasing the first tap and pressing the second.
-- Move mode resolves both stable IDs again immediately before the operation,
-  so a closed or replaced client cannot redirect the action.
+  master.
 - Press Escape to cancel.
 
 ## Double-tap actions
