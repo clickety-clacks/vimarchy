@@ -138,6 +138,9 @@ hyprctl configerrors
 ## Behavior
 
 - Prioritizes home-row letters: `a s d f g h j k l`, then the remaining letters.
+- Treats the scratchpad as a separate selection layer. While `Super+S` has the
+  scratchpad open, hints appear only on scratchpad windows, never on the normal
+  workspace windows behind them.
 - Opens settings from the active hint map with `Super+,`.
 - Tries to keep the same letter assigned to a window for better referential
   stability.

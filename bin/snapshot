@@ -18,6 +18,10 @@ jq -s '
       specialWorkspace
     })) as $monitors
   | .[1] as $clients
+  | ($monitors
+      | map(.specialWorkspace.id)
+      | map(select(. != 0))
+      | unique) as $visible_special_workspaces
   | ($clients
       | map(select((.address // "") != "" and (.stableId // "") != ""))
       | map({ key: .address, value: .stableId })
@@ -38,11 +42,13 @@ jq -s '
         $clients
         | map(select(.mapped == true and .hidden == false))
         | map(select(
-            .pinned == true
-            or (.workspace.id as $workspace
-                | any($monitors[];
-                    .activeWorkspace.id == $workspace
-                    or (.specialWorkspace.id != 0 and .specialWorkspace.id == $workspace)))
+            .workspace.id as $workspace
+            | if ($visible_special_workspaces | length) > 0 then
+                any($visible_special_workspaces[]; . == $workspace)
+              else
+                .pinned == true
+                or any($monitors[].activeWorkspace.id; . == $workspace)
+              end
           ))
         | map(. + { hintId: hint_id })
         | group_by(.hintId)
