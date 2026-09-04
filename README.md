@@ -150,8 +150,10 @@ hyprctl configerrors
 - In move mode, tapping a destination swaps it with the source. Holding a
   destination for 350 ms on a `dwindle` workspace reparents the source and
   destination as sibling tiles. Their side follows the source window's current
-  position relative to the destination. Holding a destination in any other
-  layout does nothing and leaves move mode active.
+  position relative to the destination. The destination may be on another
+  monitor; Vimarchy first moves the source to that monitor's workspace, then
+  joins the windows there. Holding a destination in any other layout does
+  nothing and leaves move mode active.
 - Double-tapping a hint focuses it and runs a layout-specific action.
   `dwindle` and `scrolling` toggle a maximized working-area view that keeps the
   bar visible; `master` promotes the window and does nothing if it is already

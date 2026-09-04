@@ -26,7 +26,6 @@ source_address=$(jq -r .address <<<"$source")
 target_address=$(jq -r .address <<<"$target")
 source_workspace=$(jq -r '.workspace.id' <<<"$source")
 target_workspace=$(jq -r '.workspace.id' <<<"$target")
-[[ $source_workspace == "$target_workspace" ]] || exit 0
 
 if jq -e --arg target "$target_address" '(.grouped // []) | index($target) != null' <<<"$source" >/dev/null; then
   omarchy-shell shell call vimarchy cancelHold "$hint" >/dev/null 2>&1 || true
@@ -34,6 +33,13 @@ if jq -e --arg target "$target_address" '(.grouped // []) | index($target) != nu
 fi
 
 mapfile -t source_members < <(jq -r 'if ((.grouped // []) | length) > 0 then .grouped[] else .address end' <<<"$source")
+
+if [[ $source_workspace != "$target_workspace" ]]; then
+  if ! "$(dirname -- "${BASH_SOURCE[0]}")/move-to-workspace" "$target_workspace" "${source_members[@]}"; then
+    omarchy-shell shell call vimarchy cancelHold "$hint" >/dev/null 2>&1 || true
+    exit 1
+  fi
+fi
 
 move_member_into_target() {
   local member_address=$1

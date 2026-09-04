@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+workspace=${1:-}
+shift || true
+[[ $workspace =~ ^-?[0-9]+$ && $# -gt 0 ]] || exit 2
+
+for address in "$@"; do
+  [[ $address =~ ^0x[0-9a-fA-F]+$ ]] || exit 2
+  hyprctl dispatch "hl.dsp.window.move({ workspace = \"$workspace\", follow = false, window = \"address:$address\" })" >/dev/null
+done
+
+members=$(printf '%s\n' "$@" | jq -Rsc 'split("\n")[:-1]')
+for _ in {1..40}; do
+  if hyprctl -j clients | jq -e --argjson workspace "$workspace" --argjson members "$members" '
+    . as $clients
+    | all($members[]; . as $member
+        | any($clients[]; .address == $member and .workspace.id == $workspace))
+  ' >/dev/null; then
+    exit 0
+  fi
+  sleep 0.005
+done
+
+exit 1

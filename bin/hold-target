@@ -29,7 +29,6 @@ source_address=$(jq -r .address <<<"$source")
 target_address=$(jq -r .address <<<"$target")
 source_workspace=$(jq -r '.workspace.id' <<<"$source")
 target_workspace=$(jq -r '.workspace.id' <<<"$target")
-[[ $source_workspace == "$target_workspace" ]] || exit 0
 
 layout=$(hyprctl -j workspaces | jq -r --argjson id "$target_workspace" '.[] | select(.id == $id) | .tiledLayout // ""')
 [[ -n $layout ]] || exit 0

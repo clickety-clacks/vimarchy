@@ -20,12 +20,22 @@ source_address=$(jq -r .address <<<"$source")
 target_address=$(jq -r .address <<<"$target")
 source_workspace=$(jq -r '.workspace.id' <<<"$source")
 target_workspace=$(jq -r '.workspace.id' <<<"$target")
-[[ $source_workspace == "$target_workspace" ]] || exit 0
 mapfile -t source_members < <(jq -r 'if ((.grouped // []) | length) > 0 then .grouped[] else .address end' <<<"$source")
 layout=$(hyprctl -j workspaces | jq -r --argjson id "$target_workspace" '.[] | select(.id == $id) | .tiledLayout')
 if [[ $layout != dwindle ]]; then
   omarchy-shell shell call vimarchy cancelHold "$hint" >/dev/null 2>&1 || true
   exit 0
+fi
+
+if [[ $source_workspace != "$target_workspace" ]]; then
+  if ! "$(dirname -- "${BASH_SOURCE[0]}")/move-to-workspace" "$target_workspace" "${source_members[@]}"; then
+    omarchy-shell shell call vimarchy cancelHold "$hint" >/dev/null 2>&1 || true
+    exit 1
+  fi
+  clients=$(hyprctl -j clients)
+  source=$(jq -c --arg stable "$source_stable" '.[] | select(.stableId == $stable)' <<<"$clients" | head -n1)
+  target=$(jq -c --arg stable "$target_stable" '.[] | select(.stableId == $stable)' <<<"$clients" | head -n1)
+  [[ -n $source && -n $target ]] || exit 0
 fi
 read -r sx sy < <(jq -r '[.at[0] + .size[0]/2, .at[1] + .size[1]/2] | @tsv' <<<"$source")
 read -r tx ty < <(jq -r '[.at[0] + .size[0]/2, .at[1] + .size[1]/2] | @tsv' <<<"$target")
