@@ -29,9 +29,21 @@ source_address=$(jq -r .address <<<"$source")
 target_address=$(jq -r .address <<<"$target")
 source_workspace=$(jq -r '.workspace.id' <<<"$source")
 target_workspace=$(jq -r '.workspace.id' <<<"$target")
+source_monitor=$(jq -r '.monitor' <<<"$source")
+target_monitor=$(jq -r '.monitor' <<<"$target")
 
 layout=$(hyprctl -j workspaces | jq -r --argjson id "$target_workspace" '.[] | select(.id == $id) | .tiledLayout // ""')
 [[ -n $layout ]] || exit 0
+
+# A destination on another output is always a placement command. Dwindle uses
+# its sibling-pair operation; other layouts move relative to the chosen target.
+if [[ $source_monitor != "$target_monitor" ]]; then
+  if [[ $layout == dwindle ]]; then
+    exec "$plugin_dir/bin/pair" "$hint"
+  else
+    exec "$plugin_dir/bin/place" "$hint"
+  fi
+fi
 
 action=""
 if [[ -f $settings_file ]]; then
@@ -42,6 +54,7 @@ run_builtin() {
   case "$1" in
     pair) exec "$plugin_dir/bin/pair" "$hint" ;;
     group) exec "$plugin_dir/bin/group" "$hint" ;;
+    place) exec "$plugin_dir/bin/place" "$hint" ;;
     disabled) omarchy-shell shell call vimarchy cancelHold "$hint" >/dev/null 2>&1 || true ;;
     *) return 2 ;;
   esac

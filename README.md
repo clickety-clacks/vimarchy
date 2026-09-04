@@ -150,10 +150,13 @@ hyprctl configerrors
 - In move mode, tapping a destination swaps it with the source. Holding a
   destination for 350 ms on a `dwindle` workspace reparents the source and
   destination as sibling tiles. Their side follows the source window's current
-  position relative to the destination. The destination may be on another
-  monitor; Vimarchy first moves the source to that monitor's workspace, then
-  joins the windows there. Holding a destination in any other layout does
-  nothing and leaves move mode active.
+  position relative to the destination. A destination on another monitor is
+  always accepted: `dwindle` joins the windows there, `scrolling` places the
+  source immediately to the target's right, and `master` places it after a
+  non-master target or promotes it when the target is master. Other layouts
+  move the source to the destination monitor's workspace. On the same monitor,
+  holding a destination in an unconfigured layout does nothing and leaves move
+  mode active.
 - Double-tapping a hint focuses it and runs a layout-specific action.
   `dwindle` and `scrolling` toggle a maximized working-area view that keeps the
   bar visible; `master` promotes the window and does nothing if it is already
@@ -181,10 +184,13 @@ Vimarchy reads optional hold-target configuration from
 }
 ```
 
-Built-ins are `pair`, `group`, and `disabled`. `pair` creates sibling tiles
-and is supported by `dwindle`; `group` combines the complete source
-window/group with the target as one Hyprland tab group; `disabled` leaves move
-mode open. A `"*"` layout entry can provide a fallback.
+Built-ins are `pair`, `place`, `group`, and `disabled`. `pair` creates sibling
+tiles and is supported by `dwindle`; `place` moves the source after the target
+using the target layout's insertion behavior; `group` combines the complete
+source window/group with the target as one Hyprland tab group; `disabled`
+leaves move mode open. A `"*"` layout entry can provide a fallback. Cross-monitor
+holds use `pair` for `dwindle` and `place` for every other layout regardless of
+these same-monitor defaults.
 
 Callback commands run without an implicit shell and receive
 `VIMARCHY_LAYOUT`, `VIMARCHY_SOURCE_ADDRESS`,

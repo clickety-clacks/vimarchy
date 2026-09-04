@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+hint=${1:-}
+[[ $hint =~ ^[a-z]{1,2}$ ]] || exit 2
+
+plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+state_file=$state_dir/snapshot.json
+source_file=$state_dir/swap-source.json
+[[ -f $state_file && -f $source_file ]] || exit 0
+
+source_stable=$(jq -r '.stableId // ""' "$source_file")
+target_stable=$(jq -r --arg hint "$hint" '.windows[] | select(.hint == $hint) | .stableId' "$state_file" | head -n1)
+[[ $source_stable =~ ^[0-9a-fA-F]+$ && $target_stable =~ ^[0-9a-fA-F]+$ && $source_stable != "$target_stable" ]] || exit 0
+
+clients=$(hyprctl -j clients)
+source=$(jq -c --arg stable "$source_stable" '.[] | select(.stableId == $stable)' <<<"$clients" | head -n1)
+target=$(jq -c --arg stable "$target_stable" '.[] | select(.stableId == $stable)' <<<"$clients" | head -n1)
+[[ -n $source && -n $target ]] || exit 0
+
+source_address=$(jq -r .address <<<"$source")
+target_address=$(jq -r .address <<<"$target")
+source_workspace=$(jq -r '.workspace.id' <<<"$source")
+target_workspace=$(jq -r '.workspace.id' <<<"$target")
+[[ $source_workspace != "$target_workspace" ]] || exit 0
+
+layout=$(hyprctl -j workspaces | jq -r --argjson id "$target_workspace" '.[] | select(.id == $id) | .tiledLayout // ""')
+[[ -n $layout ]] || exit 0
+mapfile -t source_members < <(jq -r 'if ((.grouped // []) | length) > 0 then .grouped[] else .address end' <<<"$source")
+
+hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+omarchy-shell shell hide vimarchy >/dev/null 2>&1 || true
+
+for address in "${source_members[@]}"; do
+  hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"maximized\", action = \"unset\", layout_aware = false, window = \"address:$address\" })" >/dev/null
+  hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"fullscreen\", action = \"unset\", window = \"address:$address\" })" >/dev/null
+done
+
+old_master_status=""
+old_master_on_active=""
+restore_master_options() {
+  [[ -n $old_master_status ]] && hyprctl keyword master:new_status "$old_master_status" >/dev/null 2>&1 || true
+  [[ -n $old_master_on_active ]] && hyprctl keyword master:new_on_active "$old_master_on_active" >/dev/null 2>&1 || true
+}
+
+if [[ $layout == master ]]; then
+  old_master_status=$(hyprctl getoption master:new_status -j | jq -r '.str')
+  old_master_on_active=$(hyprctl getoption master:new_on_active -j | jq -r '.str')
+  trap restore_master_options EXIT
+  hyprctl keyword master:new_status slave >/dev/null
+  hyprctl keyword master:new_on_active after >/dev/null
+fi
+
+# Both scrolling and master insert moved targets relative to the currently
+# focused target. In master, the temporary options keep a non-master target a
+# non-master while Hyprland's moved-target rule still promotes onto a master.
+hyprctl dispatch "hl.dsp.focus({ window = \"address:$target_address\" })" >/dev/null
+if ! "$plugin_dir/bin/move-to-workspace" "$target_workspace" "${source_members[@]}"; then
+  restore_master_options
+  trap - EXIT
+  exit 1
+fi
+
+restore_master_options
+trap - EXIT
+hyprctl dispatch "hl.dsp.focus({ window = \"address:$source_address\" })" >/dev/null
+rm -f "$state_file" "$source_file" "$state_dir/swap-press.json" "$state_dir/swap-press.json.tmp"
