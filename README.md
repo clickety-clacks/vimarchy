@@ -135,6 +135,21 @@ hyprctl reload
 hyprctl configerrors
 ```
 
+## Remove
+
+Close Vimarchy with Escape, then remove the Vimarchy launcher and all
+`vimarchy*` submap definitions added to `~/.config/hypr/bindings.lua` during
+installation. Reload and validate Hyprland before removing the plugin:
+
+```bash
+hyprctl reload
+hyprctl configerrors
+omarchy plugin remove vimarchy
+```
+
+Your optional settings in `~/.config/omarchy/vimarchy.json` can be kept for
+reinstallation or removed manually.
+
 ## Behavior
 
 - Prioritizes home-row letters: `a s d f g h j k l`, then the remaining letters.
