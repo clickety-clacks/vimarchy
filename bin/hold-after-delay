@@ -15,5 +15,9 @@ sleep 0.35
 jq -e --arg hint "$hint" --arg nonce "$nonce" \
   '.hint == $hint and .nonce == $nonce' "$press_file" >/dev/null || exit 0
 
-"$plugin_dir/bin/hold" "$hint"
+if [[ ${3:-normal} == alt ]]; then
+  "$plugin_dir/bin/workspaces" "$hint"
+else
+  "$plugin_dir/bin/hold" "$hint"
+fi
 rm -f "$press_file" "$state_dir/press.json.tmp"

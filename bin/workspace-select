@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+key=${1:-}
+[[ $key =~ ^[0-9s]$ ]] || exit 2
+plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+[[ -f $state_dir/swap-source.json ]] || exit 0
+stable_id=$(jq -r 'select(.mode == "workspace") | .stableId // empty' "$state_dir/swap-source.json")
+[[ $stable_id =~ ^[0-9a-fA-F]+$ ]] || exit 0
+workspace=$key
+[[ $key != 0 ]] || workspace=10
+[[ $key != s ]] || workspace=special:scratchpad
+client=$(hyprctl -j clients | jq -c --arg id "$stable_id" '.[] | select(.stableId == $id)')
+[[ -n $client ]] || { "$plugin_dir/bin/cancel"; exit 0; }
+current=$(jq -r '.workspace.name' <<<"$client")
+[[ $current != "$workspace" ]] || exit 0
+address=$(jq -r '.address' <<<"$client")
+[[ $address =~ ^0x[0-9a-fA-F]+$ ]] || { "$plugin_dir/bin/cancel"; exit 1; }
+"$plugin_dir/bin/cancel"
+hyprctl dispatch "hl.dsp.window.move({ workspace = \"$workspace\", follow = false, window = \"address:$address\" })" >/dev/null

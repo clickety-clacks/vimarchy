@@ -14,6 +14,9 @@ Item {
   property var windows: []
   property var monitors: []
   property string swapSourceHint: ""
+  property string workspaceSourceHint: ""
+  property var workspaceTargets: []
+  property real workspaceSpread: 0
   property string holdingHint: ""
   property real holdProgress: 0.0
   property real connectorVisualOpacity: connectorOpacity
@@ -89,6 +92,8 @@ Item {
     if (snapshotProcess.running) return
     root.settingsOpen = false
     root.swapSourceHint = ""
+    root.workspaceSourceHint = ""
+    root.workspaceTargets = []
     root.holdingHint = ""
     root.holdProgress = 0.0
     root.connectorVisualOpacity = root.connectorOpacity
@@ -119,6 +124,9 @@ Item {
     root.settingsOpen = false
     root.windows = []
     root.monitors = []
+    root.workspaceSourceHint = ""
+    root.workspaceTargets = []
+    workspaceAnimation.stop()
     root.swapSourceHint = ""
     root.holdingHint = ""
     root.holdProgress = 0.0
@@ -204,6 +212,32 @@ Item {
     root.connectorVisualOpacity = 1.0
     connectorFade.restart()
     return "ok"
+  }
+
+  function enterWorkspaces(hint) {
+    var source = root.windowForHint(String(hint || ""))
+    if (!root.opened || !source) return "unknown"
+    root.cancelHold("")
+    root.workspaceSourceHint = String(hint)
+    var current = source.workspace || {}
+    var targets = []
+    for (var i = 1; i <= 10; i++) {
+      if (current.id !== i) targets.push(i === 10 ? "0" : String(i))
+    }
+    if (current.name !== "special:scratchpad") targets.push("s")
+    root.workspaceTargets = targets
+    workspaceAnimation.restart()
+    return "ok"
+  }
+
+  NumberAnimation {
+    id: workspaceAnimation
+    target: root
+    property: "workspaceSpread"
+    from: 0
+    to: 1
+    duration: 220
+    easing.type: Easing.OutCubic
   }
 
   Process {
@@ -316,6 +350,7 @@ Item {
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
       readonly property var swapSource: root.windowForHint(root.swapSourceHint)
+      readonly property var workspaceSource: root.windowForHint(root.workspaceSourceHint)
 
       Repeater {
         model: root.swapMode && overlay.swapSource
@@ -373,6 +408,7 @@ Item {
           width: modelData.size[0]
           height: modelData.size[1]
           z: 2
+          visible: root.workspaceSourceHint === "" || root.workspaceSourceHint === modelData.hint
 
           Rectangle {
             anchors.fill: parent
@@ -454,6 +490,43 @@ Item {
               font.bold: true
               opacity: root.exiting ? 0 : 1
             }
+          }
+        }
+      }
+
+      Repeater {
+        model: overlay.workspaceSource && overlay.monitor
+          && overlay.workspaceSource.monitor === overlay.modelData.name
+          ? root.workspaceTargets : []
+
+        delegate: Rectangle {
+          required property string modelData
+          required property int index
+          readonly property var source: root.windowForHint(root.workspaceSourceHint)
+          readonly property color accent: root.colorForHint(root.workspaceSourceHint)
+          readonly property real orbit: 126
+          readonly property real angle: -Math.PI / 2 + index * 2 * Math.PI / root.workspaceTargets.length
+          readonly property real centerX: source ? source.at[0] + source.size[0] / 2 - overlay.monitor.x : 0
+          readonly property real centerY: source ? source.at[1] + source.size[1] / 2 - overlay.monitor.y : 0
+          x: Math.max(4, Math.min(overlay.width - width - 4,
+            centerX + Math.cos(angle) * orbit * root.workspaceSpread - width / 2))
+          y: Math.max(4, Math.min(overlay.height - height - 4,
+            centerY + Math.sin(angle) * orbit * root.workspaceSpread - height / 2))
+          width: 48
+          height: width
+          radius: width / 2
+          color: Qt.rgba(accent.r, accent.g, accent.b, root.badgeTintOpacity)
+          border.width: 2
+          border.color: accent
+          opacity: root.workspaceSpread
+          z: 3
+          Text {
+            anchors.centerIn: parent
+            text: parent.modelData.toUpperCase()
+            color: parent.accent
+            font.family: Style.font.menuFamily
+            font.pixelSize: 28
+            font.bold: true
           }
         }
       }

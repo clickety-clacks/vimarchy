@@ -14,7 +14,9 @@ hints to focus, swap, pair, or group windows directly through Hyprland.
 | Gesture | Move | Result |
 | --- | --- | --- |
 | Tap a hint | **Focus** | Focus that window. |
+| Alt + hold a hint, then tap `1`–`0` or `S` | **Move to workspace** | Hints animate outward around the source. `1`–`9` select workspaces 1–9, `0` selects 10, and `S` selects the scratchpad. The source's workspace is omitted. Move without following. |
 | Double-tap a hint | **Focus action** | Run the action configured for the current layout. By default, `dwindle` and `scrolling` toggle a full working-area view, while `master` promotes the window to master. |
+| Alt + double-tap a hint | **Alternate focus action** | Toggle a full working-area view (not fullscreen) in any layout. Configurable independently through `altDoubleTap.layouts`. |
 | Hold a hint, then tap another | **Swap** | Exchange the two windows' tiled positions. |
 | Hold a hint, then hold another | **Hold action** | Run the configured layout action. By default, `dwindle` makes the windows sibling tiles. |
 | `Escape` | **Cancel** | Dismiss Vimarchy without moving a window. |
@@ -23,6 +25,7 @@ Some examples with the defaults:
 
 - **Hold `A`, tap `S`** to swap windows `A` and `S`.
 - **Hold `A`, hold `S`** to pair windows `A` and `S` in `dwindle`.
+- **Alt + hold `A`, tap `3`** to send window `A` to workspace 3. Tap `S` instead to stash it in the scratchpad. From the scratchpad, use the same gesture to send it to a numbered workspace. Alt may stay held while choosing a destination; Escape cancels. With two-letter window hints, hold the final letter with Alt. The hold has the same 100 ms grace period and 350 ms total threshold as swap mode.
 
 By default, pair works only in `dwindle` and creates sibling tiles. The
 hold-target action is configurable, including a built-in action that creates
@@ -82,6 +85,17 @@ for first = 1, #hint_keys do
   end)
 end
 
+hl.define_submap("vimarchy-workspaces", function()
+  for key in ("1234567890s"):gmatch(".") do
+    hl.bind(key, hl.dsp.exec_cmd(vimarchy .. "/workspace-select " .. key))
+    hl.bind("ALT + " .. key, hl.dsp.exec_cmd(vimarchy .. "/workspace-select " .. key))
+  end
+  hl.bind("ESCAPE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
+  hl.bind("ALT + ESCAPE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
+  hl.bind("ALT + SPACE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
+  hl.bind("SUPER + ESCAPE", hl.dsp.submap("reset"))
+end)
+
 hl.define_submap("vimarchy-swap", function()
   for slot = 1, #hint_keys do
     local letter = hint_keys:sub(slot, slot)
@@ -140,6 +154,15 @@ Hyprland reloads the binding automatically. Validate it with:
 hyprctl reload
 hyprctl configerrors
 ```
+
+## Development testing
+
+On a dedicated Omarchy test desktop with Vimarchy enabled and the bindings above
+installed, run `VIMARCHY_TEST_DESKTOP=1 bash tests/workspaces-live.sh` from the
+checkout. This creates and removes a disposable Foot window and checks workspace
+moves, scratchpad round trips, hold/release behavior, and Alt double-tap. It tests
+the scripts invoked by the bindings, not physical keyboard input. Close special
+workspaces before running it; do not run it on a daily-driver desktop.
 
 ## Remove
 

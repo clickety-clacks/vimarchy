@@ -66,6 +66,7 @@ jq -s '
                 address,
                 stableId,
                 hintId,
+                workspace,
                 at,
                 size,
                 class,

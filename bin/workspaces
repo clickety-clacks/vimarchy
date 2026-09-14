@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+hint=${1:-}
+[[ $hint =~ ^[a-z]{1,2}$ ]] || exit 2
+plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
+[[ -f $state_dir/snapshot.json && ! -f $state_dir/swap-source.json ]] || exit 0
+source=$(jq -c --arg hint "$hint" '.windows[] | select(.hint == $hint) | {hint,stableId,mode:"workspace"}' "$state_dir/snapshot.json")
+[[ -n $source ]] || exit 0
+# Share the hold-claimed marker: releasing the source must not focus it.
+printf '%s\n' "$source" >"$state_dir/swap-source.json.tmp"
+mv -f "$state_dir/swap-source.json.tmp" "$state_dir/swap-source.json"
+rm -f "$state_dir/tap-candidate.json" "$state_dir/tap-candidate.json.tmp"
+if [[ $(omarchy-shell shell call vimarchy enterWorkspaces "$hint") != ok ]] ||
+   ! hyprctl dispatch 'hl.dsp.submap("vimarchy-workspaces")' >/dev/null; then
+  "$plugin_dir/bin/cancel"
+  exit 1
+fi
