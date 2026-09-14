@@ -51,6 +51,8 @@ hl.define_submap("vimarchy", function()
   for slot = 1, #hint_keys do
     local letter = hint_keys:sub(slot, slot)
     hl.bind(letter, hl.dsp.exec_cmd(vimarchy .. "/press " .. letter))
+    hl.bind("ALT + " .. letter, hl.dsp.exec_cmd(vimarchy .. "/press " .. letter .. " alt"))
+    hl.bind("ALT + " .. letter, hl.dsp.exec_cmd(vimarchy .. "/release " .. letter), { release = true })
     hl.bind(letter, hl.dsp.exec_cmd(vimarchy .. "/release " .. letter), { release = true })
   end
   vimarchy_escape_bindings()
@@ -60,6 +62,7 @@ hl.define_submap("vimarchy-double", function()
   for first = 1, #hint_keys do
     local letter = hint_keys:sub(first, first)
     hl.bind(letter, hl.dsp.submap("vimarchy-" .. letter))
+    hl.bind("ALT + " .. letter, hl.dsp.submap("vimarchy-" .. letter))
   end
   vimarchy_escape_bindings()
 end)
@@ -71,6 +74,8 @@ for first = 1, #hint_keys do
       local second_letter = hint_keys:sub(second, second)
       local hint = first_letter .. second_letter
       hl.bind(second_letter, hl.dsp.exec_cmd(vimarchy .. "/press " .. hint))
+      hl.bind("ALT + " .. second_letter, hl.dsp.exec_cmd(vimarchy .. "/press " .. hint .. " alt"))
+      hl.bind("ALT + " .. second_letter, hl.dsp.exec_cmd(vimarchy .. "/release " .. hint), { release = true })
       hl.bind(second_letter, hl.dsp.exec_cmd(vimarchy .. "/release " .. hint), { release = true })
     end
     vimarchy_escape_bindings()
@@ -113,6 +118,7 @@ for slot = 1, #hint_keys do
   local letter = hint_keys:sub(slot, slot)
   hl.define_submap("vimarchy-double-tap-" .. letter, function()
     hl.bind(letter, hl.dsp.exec_cmd(vimarchy .. "/double-tap " .. letter))
+    hl.bind("ALT + " .. letter, hl.dsp.exec_cmd(vimarchy .. "/double-tap " .. letter .. " alt"))
     hl.bind("ESCAPE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
     hl.bind("ALT + SPACE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
     hl.bind("SUPER + ESCAPE", hl.dsp.submap("reset"))
@@ -214,6 +220,20 @@ Callback commands run without an implicit shell and receive
 `VIMARCHY_TARGET_HINT`, and `VIMARCHY_WORKSPACE_ID`.
 
 ## Double-tap actions
+
+Hold **Alt** and double-tap a hint to toggle a full-size (maximized) window,
+keeping the status bar visible. Repeat to return to tiling. For two-letter
+hints, type the first letter and double-tap the final letter while holding Alt.
+Alt on the second tap selects this action; it shares ordinary double-tap timing.
+Configure it independently with `altDoubleTap.layouts`, for example:
+
+```json
+{"altDoubleTap": {"layouts": {"*": "toggle-maximized"}}}
+```
+
+The same built-ins and callback formats below apply. Per-layout entries override
+`"*"`; the default for every layout is `toggle-maximized`. Existing installations
+must add the Alt bindings shown in the Install section.
 
 Vimarchy reads optional double-tap configuration from
 `~/.config/omarchy/vimarchy.json`. Omitted layouts retain their defaults. A

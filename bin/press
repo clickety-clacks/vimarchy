@@ -3,6 +3,8 @@
 set -euo pipefail
 
 hint=${1:-}
+gesture=${2:-normal}
+[[ $gesture == normal || $gesture == alt ]] || exit 2
 [[ $hint =~ ^[a-z]{1,2}$ ]] || exit 2
 
 plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
@@ -50,7 +52,7 @@ if [[ -f $candidate_file ]]; then
     rm -f "$candidate_file" "$candidate_tmp" "$press_file" "$press_tmp"
     hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
     omarchy-shell shell call vimarchy beginSelection "$hint" >/dev/null 2>&1 || true
-    exec "$plugin_dir/bin/double-tap" "$key"
+    exec "$plugin_dir/bin/double-tap" "$key" "$gesture"
   fi
 fi
 

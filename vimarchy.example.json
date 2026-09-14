@@ -8,6 +8,11 @@
       "master": "disabled"
     }
   },
+  "altDoubleTap": {
+    "layouts": {
+      "*": "toggle-maximized"
+    }
+  },
   "doubleTap": {
     "timeoutMs": 280,
     "layouts": {

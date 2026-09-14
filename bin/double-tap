@@ -3,6 +3,10 @@
 set -euo pipefail
 
 key=${1:-}
+gesture=${2:-normal}
+[[ $gesture == normal || $gesture == alt ]] || exit 2
+action_section=doubleTap
+[[ $gesture == alt ]] && action_section=altDoubleTap
 [[ $key =~ ^[a-z]$ ]] || exit 2
 
 state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
@@ -47,7 +51,7 @@ layout=$(hyprctl -j activeworkspace | jq -r '.tiledLayout // ""')
 
 action=""
 if [[ -f $settings_file ]]; then
-  action=$(jq -c --arg layout "$layout" '.doubleTap.layouts[$layout] // empty' "$settings_file" 2>/dev/null || true)
+  action=$(jq -c --arg layout "$layout" --arg section "$action_section" '.[$section].layouts[$layout] // .[$section].layouts["*"] // empty' "$settings_file" 2>/dev/null || true)
 fi
 
 run_maximize_toggle() {
@@ -66,6 +70,10 @@ run_builtin() {
 }
 
 if [[ -z $action ]]; then
+  if [[ $gesture == alt ]]; then
+    run_builtin toggle-maximized
+    exit 0
+  fi
   case "$layout" in
     dwindle|scrolling) run_builtin toggle-maximized ;;
     master) run_builtin promote-master ;;
