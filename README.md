@@ -14,7 +14,9 @@ hints to focus, swap, pair, or group windows directly through Hyprland.
 | Gesture | Move | Result |
 | --- | --- | --- |
 | Tap a hint | **Focus** | Focus that window. |
-| Alt + hold a hint, then tap `1`–`0` or `S` | **Move to workspace** | Hints animate outward around the source. `1`–`9` select workspaces 1–9, `0` selects 10, and `S` selects the scratchpad. The source's workspace is omitted. Release Alt before tapping to move and follow; Alt+tap moves without following. |
+| Alt + hold a window hint | **Workspace radial** | Open an animated ring of workspace hints around that window's hint. |
+| Tap `1`–`0` or `S` in the radial | **Move and follow** | Move the source window to the destination and follow it. Release Alt before tapping. |
+| Alt + tap `1`–`0` or `S` in the radial | **Move without following** | Send the source window to the destination while staying where you are. |
 | Double-tap a hint | **Focus action** | Run the action configured for the current layout. By default, `dwindle` and `scrolling` toggle a full working-area view, while `master` promotes the window to master. |
 | Alt + double-tap a hint | **Alternate focus action** | Toggle a full working-area view (not fullscreen) in any layout. Configurable independently through `altDoubleTap.layouts`. |
 | Hold a hint, then tap another | **Swap** | Exchange the two windows' tiled positions. |
@@ -30,6 +32,22 @@ Some examples with the defaults:
 By default, pair works only in `dwindle` and creates sibling tiles. The
 hold-target action is configurable, including a built-in action that creates
 Hyprland tab groups.
+
+### Workspace radial
+
+Hold Alt while holding a window's letter to open the radial. The destination
+hints animate outward from its center: `1`–`9` are workspaces 1–9, `0` is
+workspace 10, and `S` is the scratchpad. Empty workspaces are included; the
+window's current workspace is omitted.
+
+Release the window's letter once the ring opens. **Release Alt too to follow
+your next destination tap**, or **keep Alt held to move without following**.
+You can also release Alt and press it again with the destination key. This
+works both into and out of the scratchpad. Escape cancels the picker.
+
+Upgrading from v0.6.0: update your static bindings using the installation block
+below. The new `vimarchy-workspaces` submap and Alt-modified hint bindings are
+required; updating the plugin files alone does not install these bindings.
 
 ## Install
 
