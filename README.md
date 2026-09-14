@@ -14,7 +14,7 @@ hints to focus, swap, pair, or group windows directly through Hyprland.
 | Gesture | Move | Result |
 | --- | --- | --- |
 | Tap a hint | **Focus** | Focus that window. |
-| Alt + hold a hint, then tap `1`–`0` or `S` | **Move to workspace** | Hints animate outward around the source. `1`–`9` select workspaces 1–9, `0` selects 10, and `S` selects the scratchpad. The source's workspace is omitted. Move without following. |
+| Alt + hold a hint, then tap `1`–`0` or `S` | **Move to workspace** | Hints animate outward around the source. `1`–`9` select workspaces 1–9, `0` selects 10, and `S` selects the scratchpad. The source's workspace is omitted. Release Alt before tapping to move and follow; Alt+tap moves without following. |
 | Double-tap a hint | **Focus action** | Run the action configured for the current layout. By default, `dwindle` and `scrolling` toggle a full working-area view, while `master` promotes the window to master. |
 | Alt + double-tap a hint | **Alternate focus action** | Toggle a full working-area view (not fullscreen) in any layout. Configurable independently through `altDoubleTap.layouts`. |
 | Hold a hint, then tap another | **Swap** | Exchange the two windows' tiled positions. |
@@ -25,7 +25,7 @@ Some examples with the defaults:
 
 - **Hold `A`, tap `S`** to swap windows `A` and `S`.
 - **Hold `A`, hold `S`** to pair windows `A` and `S` in `dwindle`.
-- **Alt + hold `A`, tap `3`** to send window `A` to workspace 3. Tap `S` instead to stash it in the scratchpad. From the scratchpad, use the same gesture to send it to a numbered workspace. Alt may stay held while choosing a destination; Escape cancels. With two-letter window hints, hold the final letter with Alt. The hold has the same 100 ms grace period and 350 ms total threshold as swap mode.
+- **Alt + hold `A`, release Alt, tap `3`** to move window `A` to workspace 3 and follow it. Keep Alt held (or press it again) while tapping `3` to move without following. `S` works the same way for the scratchpad. From the scratchpad, use the same gesture to send it to a numbered workspace. Escape cancels. With two-letter window hints, hold the final letter with Alt. The hold has the same 100 ms grace period and 350 ms total threshold as swap mode.
 
 By default, pair works only in `dwindle` and creates sibling tiles. The
 hold-target action is configurable, including a built-in action that creates
@@ -88,7 +88,7 @@ end
 hl.define_submap("vimarchy-workspaces", function()
   for key in ("1234567890s"):gmatch(".") do
     hl.bind(key, hl.dsp.exec_cmd(vimarchy .. "/workspace-select " .. key))
-    hl.bind("ALT + " .. key, hl.dsp.exec_cmd(vimarchy .. "/workspace-select " .. key))
+    hl.bind("ALT + " .. key, hl.dsp.exec_cmd(vimarchy .. "/workspace-select " .. key .. " alt"))
   end
   hl.bind("ESCAPE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
   hl.bind("ALT + ESCAPE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))

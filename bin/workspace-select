@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 key=${1:-}
+gesture=${2:-normal}
+[[ $gesture == normal || $gesture == alt ]] || exit 2
+follow=true
+[[ $gesture != alt ]] || follow=false
 [[ $key =~ ^[0-9s]$ ]] || exit 2
 plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 state_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vimarchy
@@ -17,4 +21,4 @@ current=$(jq -r '.workspace.name' <<<"$client")
 address=$(jq -r '.address' <<<"$client")
 [[ $address =~ ^0x[0-9a-fA-F]+$ ]] || { "$plugin_dir/bin/cancel"; exit 1; }
 "$plugin_dir/bin/cancel"
-hyprctl dispatch "hl.dsp.window.move({ workspace = \"$workspace\", follow = false, window = \"address:$address\" })" >/dev/null
+hyprctl dispatch "hl.dsp.window.move({ workspace = \"$workspace\", follow = $follow, window = \"address:$address\" })" >/dev/null

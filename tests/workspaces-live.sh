@@ -48,7 +48,7 @@ current_key=$original_workspace
 bin/workspace-select "$current_key"
 [[ $(workspace) == "$original_workspace" ]]
 [[ $(hyprctl submap | tr -d '\n') == vimarchy-workspaces ]]
-bin/workspace-select s
+bin/workspace-select s alt
 [[ $(workspace) == special:scratchpad ]]
 [[ $(hyprctl -j activeworkspace | jq -r '.name') == "$original_workspace" ]]
 hyprctl dispatch 'hl.dsp.workspace.toggle_special("scratchpad")' >/dev/null
@@ -57,13 +57,33 @@ open_hint
 hold_alt
 bin/workspace-select s
 [[ $(hyprctl submap | tr -d '\n') == vimarchy-workspaces ]]
-bin/workspace-select 0
+bin/workspace-select 0 alt
 [[ $(workspace) == 10 ]]
 if hyprctl -j monitors | jq -e 'any(.[]; .specialWorkspace.name == "special:scratchpad")' >/dev/null; then
   hyprctl dispatch 'hl.dsp.workspace.toggle_special("scratchpad")' >/dev/null
 fi
 hyprctl dispatch "hl.dsp.window.move({workspace=\"$original_workspace\",follow=false,window=\"address:$address\"})" >/dev/null
 sleep 0.2
+# Plain destination taps follow and focus, including into/out of scratchpad.
+open_hint
+hold_alt
+bin/workspace-select s
+sleep 0.2
+[[ $(workspace) == special:scratchpad ]]
+hyprctl -j monitors | jq -e 'any(.[]; .specialWorkspace.name == "special:scratchpad")' >/dev/null
+[[ $(hyprctl -j activewindow | jq -r '.address') == "$address" ]]
+open_hint
+hold_alt
+bin/workspace-select 0
+sleep 0.2
+[[ $(workspace) == 10 ]]
+[[ $(hyprctl -j activeworkspace | jq -r '.name') == 10 ]]
+[[ $(hyprctl -j activewindow | jq -r '.address') == "$address" ]]
+open_hint
+hold_alt
+bin/workspace-select "$current_key"
+sleep 0.2
+[[ $(hyprctl -j activeworkspace | jq -r '.name') == "$original_workspace" ]]
 open_hint
 bin/press "$hint"
 sleep 0.65
@@ -79,4 +99,4 @@ for expected in 1 0; do
   sleep 0.6
   [[ $(hyprctl -j clients | jq -r --arg address "$address" '.[] | select(.address == $address) | .fullscreen') == "$expected" ]]
 done
-echo 'PASS: Alt hold/release, current-workspace exclusion, scratchpad round trip, 0→10, silent move, normal hold, Alt double-tap toggle.'
+echo 'PASS: Alt hold/release, current-workspace exclusion, scratchpad round trip, 0→10, plain tap follows, Alt tap stays, normal hold, Alt double-tap toggle.'
