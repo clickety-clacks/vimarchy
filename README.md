@@ -61,7 +61,14 @@ Add the static modal map and launcher to `~/.config/hypr/bindings.lua`:
 local vimarchy = os.getenv("HOME") .. "/.config/omarchy/plugins/vimarchy/bin"
 local hint_keys = "asdfghjklqwertyuiopzxcvbnm"
 
+local function vimarchy_scale_bindings()
+  hl.bind("CTRL + PLUS", hl.dsp.exec_cmd(vimarchy .. "/scale up"))
+  hl.bind("CTRL + SHIFT + EQUAL", hl.dsp.exec_cmd(vimarchy .. "/scale up"))
+  hl.bind("CTRL + MINUS", hl.dsp.exec_cmd(vimarchy .. "/scale down"))
+end
+
 local function vimarchy_escape_bindings()
+  vimarchy_scale_bindings()
   hl.bind("SUPER + comma", hl.dsp.exec_cmd(vimarchy .. "/settings"))
   hl.bind("ESCAPE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
   hl.bind("ALT + SPACE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
@@ -112,6 +119,7 @@ hl.define_submap("vimarchy-workspaces", function()
   hl.bind("ALT + ESCAPE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
   hl.bind("ALT + SPACE", hl.dsp.exec_cmd(vimarchy .. "/cancel"))
   hl.bind("SUPER + ESCAPE", hl.dsp.submap("reset"))
+  vimarchy_scale_bindings()
 end)
 
 hl.define_submap("vimarchy-swap", function()

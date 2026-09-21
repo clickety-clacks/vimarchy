@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+case ${1:-} in
+  up) delta=1 ;;
+  down) delta=-1 ;;
+  *) echo "usage: $0 up|down" >&2; exit 2 ;;
+esac
+
+omarchy-shell shell call vimarchy adjustHintScale "$delta" >/dev/null 2>&1 || true

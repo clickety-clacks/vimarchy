@@ -36,6 +36,7 @@ Item {
   readonly property string settingsPath: Quickshell.env("HOME") + "/.config/omarchy/vimarchy.json"
   property real windowTintOpacity: 0.07
   property real badgeTintOpacity: 0.21
+  property real hintScale: 1.0
   readonly property real connectorOpacity: 0.60
   property bool settingsLoaded: false
   property var settingsData: ({})
@@ -61,8 +62,10 @@ Item {
     root.settingsData = data
     var windowOpacity = Number(data.windowTintOpacity)
     var badgeOpacity = Number(data.badgeTintOpacity)
+    var savedHintScale = Number(data.hintScale)
     root.windowTintOpacity = isFinite(windowOpacity) ? Math.max(0, Math.min(0.30, windowOpacity)) : 0.07
     root.badgeTintOpacity = isFinite(badgeOpacity) ? Math.max(0, Math.min(0.30, badgeOpacity)) : 0.21
+    root.hintScale = isFinite(savedHintScale) ? Math.max(0.75, Math.min(1.50, savedHintScale)) : 1.0
     root.settingsLoaded = true
   }
 
@@ -73,8 +76,22 @@ Item {
     for (var key in source) data[key] = source[key]
     data.windowTintOpacity = root.windowTintOpacity
     data.badgeTintOpacity = root.badgeTintOpacity
+    data.hintScale = root.hintScale
     root.settingsData = data
     settingsFile.setText(JSON.stringify(data, null, 2) + "\n")
+  }
+
+  function adjustHintScale(delta) {
+    var next = root.hintScale + Number(delta || 0) * 0.10
+    root.hintScale = Math.max(0.75, Math.min(1.50, Math.round(next * 100) / 100))
+    if (root.settingsLoaded) settingsSaveTimer.restart()
+    return "ok"
+  }
+
+  function hintBadgeSize(size) {
+    var base = Math.max(Style.space(72), Math.min(Style.space(132),
+      Style.space(Math.min(size[0], size[1]) * 0.34)))
+    return base * root.hintScale
   }
 
   function open(payloadJson) {
@@ -366,12 +383,10 @@ Item {
           readonly property real deltaX: targetX - sourceX
           readonly property real deltaY: targetY - sourceY
           readonly property real distance: Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-          readonly property real sourceRadius: Math.max(72, Math.min(132,
-            Math.min(overlay.swapSource.size[0], overlay.swapSource.size[1]) * 0.34)) / 2
-            + Style.space(6)
-          readonly property real targetRadius: Math.max(72, Math.min(132,
-            Math.min(modelData.size[0], modelData.size[1]) * 0.34)) / 2
-            + Style.space(6)
+          readonly property real sourceRadius: root.hintBadgeSize(overlay.swapSource.size) / 2
+            + Style.space(6) * root.hintScale
+          readonly property real targetRadius: root.hintBadgeSize(modelData.size) / 2
+            + Style.space(6) * root.hintScale
           readonly property real unitX: distance > 0 ? deltaX / distance : 0
           readonly property real unitY: distance > 0 ? deltaY / distance : 0
           readonly property real startX: sourceX + unitX * sourceRadius
@@ -400,8 +415,7 @@ Item {
           id: windowHint
           required property var modelData
           readonly property color accentColor: root.colorForHint(modelData.hint)
-          readonly property int badgeSize: Math.max(72, Math.min(132,
-            Math.min(modelData.size[0], modelData.size[1]) * 0.34))
+          readonly property real badgeSize: root.hintBadgeSize(modelData.size)
 
           x: modelData.at[0] - overlay.monitor.x
           y: modelData.at[1] - overlay.monitor.y
@@ -433,7 +447,7 @@ Item {
 
           Rectangle {
             anchors.centerIn: parent
-            width: windowHint.badgeSize + Style.space(12)
+            width: windowHint.badgeSize + Style.space(12) * root.hintScale
             height: width
             radius: width / 2
             color: "transparent"
@@ -446,7 +460,7 @@ Item {
 
           Shape {
             anchors.centerIn: parent
-            width: windowHint.badgeSize + Style.space(12)
+            width: windowHint.badgeSize + Style.space(12) * root.hintScale
             height: width
             visible: root.holdingHint === windowHint.modelData.hint
             opacity: root.connectorOpacity
@@ -457,10 +471,10 @@ Item {
                 ? root.colorForHint(root.swapSourceHint) : windowHint.accentColor
               fillColor: "transparent"
               capStyle: ShapePath.RoundCap
-              startX: (windowHint.badgeSize + Style.space(12)) / 2
+              startX: (windowHint.badgeSize + Style.space(12) * root.hintScale) / 2
               startY: 0
               PathAngleArc {
-                centerX: (windowHint.badgeSize + Style.space(12)) / 2
+                centerX: (windowHint.badgeSize + Style.space(12) * root.hintScale) / 2
                 centerY: centerX
                 radiusX: centerX - Math.max(2, Style.space(2)) / 2
                 radiusY: radiusX
@@ -504,7 +518,7 @@ Item {
           required property int index
           readonly property var source: root.windowForHint(root.workspaceSourceHint)
           readonly property color accent: root.colorForHint(root.workspaceSourceHint)
-          readonly property real orbit: 126
+          readonly property real orbit: Style.space(126) * root.hintScale
           readonly property real angle: -Math.PI / 2 + index * 2 * Math.PI / root.workspaceTargets.length
           readonly property real centerX: source ? source.at[0] + source.size[0] / 2 - overlay.monitor.x : 0
           readonly property real centerY: source ? source.at[1] + source.size[1] / 2 - overlay.monitor.y : 0
@@ -512,11 +526,11 @@ Item {
             centerX + Math.cos(angle) * orbit * root.workspaceSpread - width / 2))
           y: Math.max(4, Math.min(overlay.height - height - 4,
             centerY + Math.sin(angle) * orbit * root.workspaceSpread - height / 2))
-          width: 48
+          width: Style.space(48) * root.hintScale
           height: width
           radius: width / 2
           color: Qt.rgba(accent.r, accent.g, accent.b, root.badgeTintOpacity)
-          border.width: 2
+          border.width: Math.max(1, Style.space(2) * root.hintScale)
           border.color: accent
           opacity: root.workspaceSpread
           z: 3
@@ -525,7 +539,7 @@ Item {
             text: parent.modelData.toUpperCase()
             color: parent.accent
             font.family: Style.font.menuFamily
-            font.pixelSize: 28
+            font.pixelSize: Style.space(28) * root.hintScale
             font.bold: true
           }
         }
