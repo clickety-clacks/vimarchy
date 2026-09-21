@@ -45,6 +45,9 @@ your next destination tap**, or **keep Alt held to move without following**.
 You can also release Alt and press it again with the destination key. This
 works both into and out of the scratchpad. Escape cancels the picker.
 
+When Vimarchy is open, press Ctrl+Plus or Ctrl+Minus to resize the hint circles
+and letters. Ctrl+Shift+= is the equivalent Plus binding on US keyboards.
+
 Upgrading from v0.6.0: update your static bindings using the installation block
 below. The new `vimarchy-workspaces` submap and Alt-modified hint bindings are
 required; updating the plugin files alone does not install these bindings.
