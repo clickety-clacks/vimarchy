@@ -21,7 +21,10 @@ Item {
   property real holdProgress: 0.0
   property real connectorVisualOpacity: connectorOpacity
   property string selectedHint: ""
+  property real selectionPulse: 0.0
   property real exitOpacity: 1.0
+  property real otherHintOpacity: 1.0
+  property real badgeEntrance: 0.0
   readonly property bool exiting: selectedHint !== ""
   readonly property bool swapMode: swapSourceHint !== ""
   property int loadGeneration: 0
@@ -116,7 +119,13 @@ Item {
     root.connectorVisualOpacity = root.connectorOpacity
     root.selectedHint = ""
     root.exitOpacity = 1.0
+    root.otherHintOpacity = 1.0
+    selectionPulseAnimation.stop()
+    root.selectionPulse = 0.0
+    badgeEntranceAnimation.stop()
+    root.badgeEntrance = 0.0
     selectionFade.stop()
+    otherHintsFade.stop()
     selectionCloseTimer.stop()
     holdAnimation.stop()
     connectorFade.stop()
@@ -132,7 +141,11 @@ Item {
   }
 
   function close() {
+    selectionPulseAnimation.stop()
+    root.selectionPulse = 0.0
+    badgeEntranceAnimation.stop()
     selectionFade.stop()
+    otherHintsFade.stop()
     selectionCloseTimer.stop()
     holdAnimation.stop()
     connectorFade.stop()
@@ -150,17 +163,25 @@ Item {
     root.connectorVisualOpacity = root.connectorOpacity
     root.selectedHint = ""
     root.exitOpacity = 1.0
+    root.otherHintOpacity = 1.0
   }
 
   function beginSelection(hint) {
+    if (root.exiting) return
     if (!root.opened || !root.windowForHint(hint)) {
       root.close()
       return
     }
     root.settingsOpen = false
     root.swapSourceHint = ""
+    badgeEntranceAnimation.stop()
+    root.badgeEntrance = 1.0
     root.selectedHint = hint
     root.exitOpacity = 1.0
+    root.otherHintOpacity = 1.0
+    root.selectionPulse = 0.0
+    selectionPulseAnimation.restart()
+    otherHintsFade.restart()
     selectionFade.restart()
     selectionCloseTimer.restart()
   }
@@ -196,6 +217,7 @@ Item {
       root.monitors = data.monitors || []
       root.windows = nextWindows.filter(function(window) { return !!window.hint }).slice(0, available)
       root.opened = root.windows.length > 0
+      if (root.opened) badgeEntranceAnimation.restart()
     } catch (error) {
       console.warn("vimarchy: could not parse Hyprland snapshot:", error)
       root.close()
@@ -245,6 +267,16 @@ Item {
     root.workspaceTargets = targets
     workspaceAnimation.restart()
     return "ok"
+  }
+
+  NumberAnimation {
+    id: badgeEntranceAnimation
+    target: root
+    property: "badgeEntrance"
+    from: 0.0
+    to: 1.0
+    duration: 300
+    easing.type: Easing.OutCubic
   }
 
   NumberAnimation {
@@ -328,21 +360,44 @@ Item {
     easing.type: Easing.OutCubic
   }
 
+  NumberAnimation {
+    id: selectionPulseAnimation
+    target: root
+    property: "selectionPulse"
+    from: 0.0
+    to: 1.0
+    duration: 320
+    easing.type: Easing.OutCubic
+  }
+
+  // Clear unrelated hints first, then let the selected badge/checkmark linger
+  // briefly before fading. Avoid flashing a bright tint across the full window.
+  NumberAnimation {
+    id: otherHintsFade
+    target: root
+    property: "otherHintOpacity"
+    from: 1.0
+    to: 0.0
+    duration: 180
+    easing.type: Easing.OutCubic
+  }
+
   SequentialAnimation {
     id: selectionFade
+    PauseAnimation { duration: 100 }
     NumberAnimation {
       target: root
       property: "exitOpacity"
       from: 1.0
       to: 0.0
-      duration: 500
-      easing.type: Easing.Linear
+      duration: 320
+      easing.type: Easing.OutCubic
     }
   }
 
   Timer {
     id: selectionCloseTimer
-    interval: 520
+    interval: 440
     repeat: false
     onTriggered: root.close()
   }
@@ -414,6 +469,10 @@ Item {
         delegate: Item {
           id: windowHint
           required property var modelData
+          required property int index
+          // Stagger only the badges; keep window outlines steady while hints arrive.
+          readonly property real badgeProgress: Math.max(0, Math.min(1,
+            (root.badgeEntrance - Math.min(index, 6) * 0.055) / (1 - Math.min(index, 6) * 0.055)))
           readonly property color accentColor: root.colorForHint(modelData.hint)
           readonly property real badgeSize: root.hintBadgeSize(modelData.size)
 
@@ -423,16 +482,15 @@ Item {
           height: modelData.size[1]
           z: 2
           visible: root.workspaceSourceHint === "" || root.workspaceSourceHint === modelData.hint
+          opacity: root.exiting
+            ? (modelData.hint === root.selectedHint ? root.exitOpacity : root.otherHintOpacity)
+            : 1
 
           Rectangle {
             anchors.fill: parent
-            opacity: root.exiting
-              ? (windowHint.modelData.hint === root.selectedHint ? root.exitOpacity : 0)
-              : 1
             color: Qt.rgba(windowHint.accentColor.r, windowHint.accentColor.g,
               windowHint.accentColor.b,
-              windowHint.modelData.hint === root.swapSourceHint || windowHint.modelData.hint === root.selectedHint
-                ? 0.50 : root.windowTintOpacity)
+              windowHint.modelData.hint === root.swapSourceHint ? 0.50 : root.windowTintOpacity)
             radius: Style.cornerRadius
           }
 
@@ -442,7 +500,7 @@ Item {
             border.width: Math.max(2, Style.space(2))
             border.color: windowHint.accentColor
             radius: Style.cornerRadius
-            opacity: root.exiting ? 0 : 1
+            opacity: root.exiting && windowHint.modelData.hint === root.selectedHint ? 0.55 : 1
           }
 
           Rectangle {
@@ -490,19 +548,25 @@ Item {
             width: windowHint.badgeSize
             height: windowHint.badgeSize
             radius: width / 2
-            opacity: root.exiting ? 0 : 1
+            // Start as a visible dot, then expand into the translucent hint circle.
+            scale: windowHint.modelData.hint === root.selectedHint
+              ? 1 + 0.09 * Math.sin(Math.PI * root.selectionPulse)
+              : 0.045 + 0.955 * windowHint.badgeProgress
             color: Qt.rgba(windowHint.accentColor.r, windowHint.accentColor.g,
               windowHint.accentColor.b,
-              windowHint.modelData.hint === root.selectedHint ? 0.50 : root.badgeTintOpacity)
+              windowHint.modelData.hint === root.selectedHint ? 0.30
+                : root.badgeTintOpacity + (0.85 - root.badgeTintOpacity)
+                  * (1 - windowHint.badgeProgress))
 
             Text {
               anchors.centerIn: parent
-              text: windowHint.modelData.hint.toUpperCase()
+              text: windowHint.modelData.hint === root.selectedHint
+                ? "✓" : windowHint.modelData.hint.toUpperCase()
               color: windowHint.accentColor
+              opacity: Math.max(0, Math.min(1, (windowHint.badgeProgress - 0.35) / 0.5))
               font.family: Style.font.menuFamily
               font.pixelSize: Math.round(badge.height * (text.length > 1 ? 0.46 : 0.62))
               font.bold: true
-              opacity: root.exiting ? 0 : 1
             }
           }
         }
